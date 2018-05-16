@@ -2,29 +2,41 @@
 
 
 [[projects]]
-  name = "github.com/alecthomas/kingpin"
+  name = "github.com/gorilla/context"
   packages = ["."]
-  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
-  version = "v2.2.6"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
   branch = "master"
-  name = "github.com/alecthomas/template"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
   packages = [
-    ".",
-    "parse"
+    "unix",
+    "windows"
   ]
-  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/alecthomas/units"
-  packages = ["."]
-  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+  revision = "7c87d13f8e835d2fb3a70a2912c811ed0c1d241b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4221e3d9b68ca0d83928078789bd86a117c85150f93d11d12892fe2135bab085"
+  inputs-digest = "2bc2f7f69e15fdb1e7305c0742ba778ba64fa8af6db5c98ee66eef729d612c9b"
   solver-name = "gps-cdcl"
   solver-version = 1
