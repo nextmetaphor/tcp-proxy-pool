@@ -2,12 +2,12 @@ package controller
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/gorilla/mux"
+	"github.com/nextmetaphor/aws-container-factory/application"
 )
 
 type (
 	Context struct {
-		Log            *logrus.Logger
-		Router         *mux.Router
+		Log   *logrus.Logger
+		Flags *application.CommandLineFlags
 	}
 )
