@@ -27,16 +27,4 @@ func main() {
 
 	// start a listener
 	ctx.StartListener()
-
-	//for {
-	//	// Listen for an incoming connection.
-	//	conn, err := l.Accept()
-	//	if err != nil {
-	//		fmt.Println("Error accepting: ", err.Error())
-	//		os.Exit(1)
-	//	}
-	//	// Handle connections in a new goroutine.
-	//	//go handleRequest(conn)
-	//}
-
 }
