@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tcp-pool-proxy
+  namespace: aws-container-factory
+spec:
+  ports:
+  - port: 8443
+    targetPort: 8443
+    protocol: TCP
+  selector:
+    app: tcp-pool-proxy

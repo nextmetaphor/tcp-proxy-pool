@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sample-api
+  namespace: aws-container-factory
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tcp-pool-proxy
+    spec:
+      containers:
+      - image: nextmetaphor/tcp-pool:latest
+        imagePullPolicy: IfNotPresent
+        name: sample-api
+        ports:
+        - containerPort: 8443
