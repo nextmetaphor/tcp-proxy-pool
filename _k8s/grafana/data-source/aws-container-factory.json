@@ -1,0 +1,10 @@
+{
+  "name" : "aws-container-factory",
+  "type" : "influxdb",
+  "url" : "http://influxdb:8086",
+  "access" : "proxy",
+  "database" : "aws-container-factory",
+  "user" : "admin",
+  "password" : "admin",
+  "isDefault" : false
+}
