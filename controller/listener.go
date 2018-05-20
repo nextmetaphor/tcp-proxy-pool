@@ -2,20 +2,64 @@ package controller
 
 import (
 	"net"
-	"github.com/nextmetaphor/aws-container-factory/application"
+	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"io"
+	"github.com/influxdata/influxdb/client/v2"
+	"time"
+	"log"
 )
 
 const (
-	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener    = "Error creating listener"
-	logErrorAcceptingConnection = "Error accepting connection"
-	logErrorProxyingConnection  = "Error proxying connection"
-	logErrorCopying             = "Error copying"
-	logErrorClosing             = "Error closing"
+	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
+	logErrorCreatingListener          = "Error creating listener"
+	logErrorAcceptingConnection       = "Error accepting connection"
+	logErrorProxyingConnection        = "Error proxying connection"
+	logErrorCopying                   = "Error copying"
+	logErrorClosing                   = "Error closing"
+	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
+	logErrorCreatingMonitorBatch      = "Error creating monitoring batch"
 )
 
+var totalConnections int
+
+func (ctx Context) writePoint(monitorClient client.Client, measurementName string, tags map[string]string, fields map[string]interface{}) {
+	// Create a new point batch
+	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
+		Database:  "tcp-proxy-pool",
+		//Precision: "s",
+	})
+	if err != nil {
+		ctx.Log.Error(logErrorCreatingMonitorBatch, err)
+	}
+
+	pt, err := client.NewPoint(measurementName, tags, fields, time.Now())
+	if err != nil {
+		log.Fatal(err)
+	}
+	bp.AddPoint(pt)
+
+	if err := monitorClient.Write(bp); err != nil {
+		ctx.Log.Error(err)
+	}
+}
+
 func (ctx Context) StartListener() bool {
+	// First start the monitor client, we'll need to pass this around
+	//monitorClient, err := client.NewUDPClient(client.UDPConfig{
+	//	Addr: "influxdb:8089",
+	//})
+
+	monitorClient, err := client.NewHTTPClient(client.HTTPConfig{
+		Addr: "http://influxdb:8086",
+		Username: "admin",
+		Password: "admin",
+	})
+
+	if err != nil {
+		ctx.Log.Error(logErrorCreatingMonitorConnection, err)
+	}
+	defer monitorClient.Close()
+
 	ctx.Log.Infof(logSecureServerStarting,
 		*(*ctx.Flags)[application.HostNameFlag].FlagValue,
 		*(*ctx.Flags)[application.PortNameFlag].FlagValue,
@@ -36,33 +80,39 @@ func (ctx Context) StartListener() bool {
 		return false
 	}
 
-	ctx.handleConnections(listener)
+	ctx.handleConnections(listener, monitorClient)
 
 	return true
 }
 
-func (ctx Context) handleConnections(listener net.Listener) {
+func (ctx Context) handleConnections(listener net.Listener, monitorClient client.Client) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			ctx.Log.Error(logErrorAcceptingConnection, err)
 		}
+		totalConnections++
+		ctx.writePoint(monitorClient,
+			"connections",
+			map[string]string{"listen-requests": "request-count"},
+			map[string]interface{}{"request-count": totalConnections})
 
-		go ctx.handleConnection(conn)
+		go ctx.handleConnection(conn, monitorClient)
+
 	}
 }
 
-func (ctx Context) handleConnection(listener net.Conn) {
-	conn, err := net.Dial("tcp", "localhost:8080")
+func (ctx Context) handleConnection(listener net.Conn, monitorClient client.Client) {
+	conn, err := net.Dial("tcp", "sample-api:8080")
 	if err != nil {
 		ctx.Log.Error(logErrorProxyingConnection, err)
 		return
 	}
 
-	ctx.proxy(listener.(*net.TCPConn), conn.(*net.TCPConn))
+	ctx.proxy(listener.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
 }
 
-func (ctx Context) proxy(server, client *net.TCPConn) {
+func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Client) {
 	serverClosedFlag := make(chan struct{}, 1)
 	clientClosedFlag := make(chan struct{}, 1)
 
@@ -81,6 +131,12 @@ func (ctx Context) proxy(server, client *net.TCPConn) {
 	}
 
 	<-waitFlag
+
+	totalConnections--
+	ctx.writePoint(monitorClient,
+		"connections",
+		map[string]string{"listen-requests": "request-count"},
+		map[string]interface{}{"request-count": totalConnections})
 }
 
 func (ctx Context) connectionCopy(dst, src net.Conn, sourceClosedFlag chan struct{}) {

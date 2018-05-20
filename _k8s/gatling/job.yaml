@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gatling
+spec:
+  template:
+    metadata:
+      labels:
+        app: gatling
+    spec:
+      restartPolicy: Never
+      containers:
+      - image: nextmetaphor/alpine-gatling:latest
+        imagePullPolicy: IfNotPresent
+        name: gatling
+        command: ["/opt/gatling-charts-highcharts-bundle/bin/gatling.sh"]
+        args: ["-sf", "user-files", "-s", "tcppoolproxy.TCPPoolProxySimulation"]
+        volumeMounts:
+        - mountPath: /opt/gatling-charts-highcharts-bundle/user-files
+          name: gatling-user-files
+        - mountPath: /opt/gatling-charts-highcharts-bundle/results
+          name: gatling-results
+        - mountPath: /opt/gatling-charts-highcharts-bundle-2.2.5/conf
+          name: gatling-conf
+
+      volumes:
+      - name: gatling-user-files
+        hostPath:
+          path: /Users/paul/Development/golang/src/github.com/nextmetaphor/tcp-proxy-pool/_k8s/gatling/user-files
+          type: Directory
+      - name: gatling-results
+        hostPath:
+          path: /Users/paul/Development/golang/src/github.com/nextmetaphor/tcp-proxy-pool/_k8s/gatling/results
+          type: Directory
+      - name: gatling-conf
+        hostPath:
+          path: /Users/paul/Development/golang/src/github.com/nextmetaphor/tcp-proxy-pool/_k8s/gatling/conf
+          type: Directory

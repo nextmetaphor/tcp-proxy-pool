@@ -1,0 +1,31 @@
+package tcppoolproxy
+
+import io.gatling.core.Predef._
+import io.gatling.http.Predef._
+import scala.concurrent.duration._
+
+class TCPPoolProxySimulation extends Simulation {
+
+  val httpConfig = http
+    .disableClientSharing
+    .baseURL("http://tcp-pool-proxy:8443")
+
+  val scn = scenario("TCPPoolProxyScenario")
+    .forever() {
+      exec(http("sample-api")
+        .get("/")
+        .pause(1 millisecond, 100 millisecond))
+    }
+
+  setUp(
+    scn.inject(
+      rampUsers(1) over (20 second),
+      nothingFor(1 minute),
+      rampUsers(1) over (20 second),
+      nothingFor(1 minute),
+      rampUsers(1) over (20 second),
+      nothingFor(1 minute),
+      rampUsers(1) over (20 second),
+      nothingFor(1 minute)
+    ).protocols(httpConfig)
+  ).throttle(reachRps(45) in (60 second)).maxDuration(1 minutes)}

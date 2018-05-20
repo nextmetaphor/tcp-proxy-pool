@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/nextmetaphor/aws-container-factory/controller"
-	"github.com/nextmetaphor/aws-container-factory/application"
-	"github.com/nextmetaphor/aws-container-factory/log"
+	"github.com/nextmetaphor/tcp-proxy-pool/controller"
+	"github.com/nextmetaphor/tcp-proxy-pool/application"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"os"
 )
 

@@ -18,12 +18,15 @@ kubectl create -f _k8s/influxdb/deployment.yaml --namespace $NAMESPACE
 kubectl create -f _k8s/influxdb/service.yaml --namespace $NAMESPACE
 
 # create a database
-curl -X POST -u admin:admin "http://`minikube ip`:30100/query" --data-urlencode "q=CREATE DATABASE \"aws-container-factory\""
+curl -X POST -u admin:admin "http://`minikube ip`:30100/query" --data-urlencode "q=CREATE DATABASE \"tcp-proxy-pool\""
 
 # add grafana for monitoring dashboards
 kubectl create -f _k8s/grafana/deployment.yaml --namespace $NAMESPACE
 kubectl create -f _k8s/grafana/service.yaml --namespace $NAMESPACE
 
 # add the data sources
-curl -X POST -u admin:admin "http://`minikube ip`:30103/api/datasources" -d @_k8s/grafana/data-source/aws-container-factory.json --header "Content-Type: application/json"
+curl -X POST -u admin:admin "http://`minikube ip`:30103/api/datasources" -d @_k8s/grafana/data-source/tcp-proxy-pool.json --header "Content-Type: application/json"
 curl -X POST -u admin:admin "http://`minikube ip`:30103/api/datasources" -d @_k8s/grafana/data-source/gatling.json --header "Content-Type: application/json"
+
+# add gatling
+kubectl create -f _k8s/gatling/job.yaml --namespace $NAMESPACE

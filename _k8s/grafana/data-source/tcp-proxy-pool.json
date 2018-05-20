@@ -1,9 +1,9 @@
 {
-  "name" : "aws-container-factory",
+  "name" : "tcp-proxy-pool",
   "type" : "influxdb",
   "url" : "http://influxdb:8086",
   "access" : "proxy",
-  "database" : "aws-container-factory",
+  "database" : "tcp-proxy-pool",
   "user" : "admin",
   "password" : "admin",
   "isDefault" : false

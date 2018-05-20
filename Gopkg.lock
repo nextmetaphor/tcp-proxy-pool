@@ -29,16 +29,14 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/gorilla/context"
-  packages = ["."]
-  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
-  version = "v1.1.1"
-
-[[projects]]
-  name = "github.com/gorilla/mux"
-  packages = ["."]
-  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
-  version = "v1.6.2"
+  name = "github.com/influxdata/influxdb"
+  packages = [
+    "client/v2",
+    "models",
+    "pkg/escape"
+  ]
+  revision = "02d7d4f043b34ecb4e9b2dbec298c6f9450c2a32"
+  version = "v1.5.2"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -76,6 +74,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "277aa781df661f33a0ec9858f92b968e92f1ecdf8ffb834a8ea0b4af61da9248"
+  inputs-digest = "e98bdda947a39f037538d992fd94529c046729a93c7c2be7d13e0b18d0fa5564"
   solver-name = "gps-cdcl"
   solver-version = 1

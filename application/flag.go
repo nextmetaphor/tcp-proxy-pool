@@ -2,11 +2,11 @@ package application
 
 import (
 	"github.com/alecthomas/kingpin"
-	"github.com/nextmetaphor/aws-container-factory/log"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
-	cAppName            = "aws-container-factory"
+	cAppName            = "tcp-proxy-pool"
 	cAppNameDescription = "TODO"
 
 	HostNameFlag          = "hostname"
