@@ -26,7 +26,7 @@ func (ctx Context) writePoint(monitorClient client.Client, measurementName strin
 	// Create a new point batch
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database: "tcp-proxy-pool",
-		//Precision: "s",
+		Precision: "us",
 	})
 	if err != nil {
 		ctx.Log.Error(logErrorCreatingMonitorBatch, err)
@@ -145,10 +145,17 @@ func (ctx Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClo
 		ctx.Log.Error(logErrorCopying, err)
 	}
 
-	ctx.writePoint(monitorClient,
-		"connections",
-		map[string]string{"bytes-copied": "total"},
-		map[string]interface{}{"bytesCopied": bytesCopied})
+	if srcIsServer {
+		ctx.writePoint(monitorClient,
+			"connections",
+			map[string]string{"bytes-copied": "total"},
+			map[string]interface{}{"bytesCopiedFromClient": bytesCopied})
+	} else {
+		ctx.writePoint(monitorClient,
+			"connections",
+			map[string]string{"bytes-copied": "total"},
+			map[string]interface{}{"bytesCopiedFromServer": bytesCopied})
+	}
 
 	if err := src.Close(); err != nil {
 		ctx.Log.Error(logErrorClosing, err)

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegraf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegraf
+  template:
+    metadata:
+      labels:
+        app: telegraf
+    spec:
+      containers:
+      - image: telegraf:latest
+        imagePullPolicy: Always
+        name: telegraf
+        ports:
+        - containerPort: 8094
+        volumeMounts:
+          - name: telegraf-conf
+            mountPath: /etc/telegraf/
+      volumes:
+        - name: telegraf-conf
+          configMap:
+            name: telegraf-conf
+            items:
+              - key: telegraf.conf
+                path: telegraf.conf
