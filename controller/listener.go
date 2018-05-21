@@ -25,7 +25,7 @@ var totalConnections int
 func (ctx Context) writePoint(monitorClient client.Client, measurementName string, tags map[string]string, fields map[string]interface{}) {
 	// Create a new point batch
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database:  "tcp-proxy-pool",
+		Database: "tcp-proxy-pool",
 		//Precision: "s",
 	})
 	if err != nil {
@@ -44,16 +44,16 @@ func (ctx Context) writePoint(monitorClient client.Client, measurementName strin
 }
 
 func (ctx Context) StartListener() bool {
-	// First start the monitor client, we'll need to pass this around
-	//monitorClient, err := client.NewUDPClient(client.UDPConfig{
-	//	Addr: "influxdb:8089",
-	//})
-
-	monitorClient, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr: "http://influxdb:8086",
-		Username: "admin",
-		Password: "admin",
+	//First start the monitor client, we'll need to pass this around
+	monitorClient, err := client.NewUDPClient(client.UDPConfig{
+		Addr: "influxdb:8089",
 	})
+
+	//monitorClient, err := client.NewHTTPClient(client.HTTPConfig{
+	//	Addr:     "http://influxdb:8086",
+	//	Username: "admin",
+	//	Password: "admin",
+	//})
 
 	if err != nil {
 		ctx.Log.Error(logErrorCreatingMonitorConnection, err)
@@ -113,24 +113,24 @@ func (ctx Context) handleConnection(listener net.Conn, monitorClient client.Clie
 }
 
 func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Client) {
-	serverClosedFlag := make(chan struct{}, 1)
-	clientClosedFlag := make(chan struct{}, 1)
+	clientClosedChannel := make(chan struct{}, 1)
+	serverClosedChannel := make(chan struct{}, 1)
 
-	go ctx.connectionCopy(server, client, clientClosedFlag)
-	go ctx.connectionCopy(client, server, serverClosedFlag)
+	go ctx.connectionCopy(false, server, client, clientClosedChannel, monitorClient)
+	go ctx.connectionCopy(true, client, server, serverClosedChannel, monitorClient)
 
-	var waitFlag chan struct{}
+	var waitChannel chan struct{}
 	select {
-	case <-clientClosedFlag:
+	case <-clientClosedChannel:
 		server.SetLinger(0)
 		server.CloseRead()
-		waitFlag = serverClosedFlag
-	case <-serverClosedFlag:
+		waitChannel = serverClosedChannel
+	case <-serverClosedChannel:
 		client.CloseRead()
-		waitFlag = clientClosedFlag
+		waitChannel = clientClosedChannel
 	}
 
-	<-waitFlag
+	<-waitChannel
 
 	totalConnections--
 	ctx.writePoint(monitorClient,
@@ -139,12 +139,20 @@ func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Clien
 		map[string]interface{}{"request-count": totalConnections})
 }
 
-func (ctx Context) connectionCopy(dst, src net.Conn, sourceClosedFlag chan struct{}) {
-	if _, err := io.Copy(dst, src); err != nil {
+func (ctx Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}, monitorClient client.Client) {
+	bytesCopied, err := io.Copy(dst, src);
+	if err != nil {
 		ctx.Log.Error(logErrorCopying, err)
 	}
+
+	ctx.writePoint(monitorClient,
+		"connections",
+		map[string]string{"bytes-copied": "total"},
+		map[string]interface{}{"bytesCopied": bytesCopied})
+
 	if err := src.Close(); err != nil {
 		ctx.Log.Error(logErrorClosing, err)
 	}
-	sourceClosedFlag <- struct{}{}
+
+	sourceClosedChannel <- struct{}{}
 }
