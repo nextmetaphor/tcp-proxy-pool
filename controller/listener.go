@@ -7,6 +7,7 @@ import (
 	"github.com/influxdata/influxdb/client/v2"
 	"time"
 	"log"
+	tls "crypto/tls"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 	logErrorClosing                   = "Error closing"
 	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 	logErrorCreatingMonitorBatch      = "Error creating monitoring batch"
+	logErrorLoadingCertificates       = "Error loading certificates"
 )
 
 var totalConnections int
@@ -25,8 +27,8 @@ var totalConnections int
 func (ctx Context) writePoint(monitorClient client.Client, measurementName string, tags map[string]string, fields map[string]interface{}) {
 	// Create a new point batch
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database: "tcp-proxy-pool",
-		Precision: "us",
+		Database:  "tcp-proxy-pool",
+		Precision: "ns",
 	})
 	if err != nil {
 		ctx.Log.Error(logErrorCreatingMonitorBatch, err)
@@ -46,7 +48,7 @@ func (ctx Context) writePoint(monitorClient client.Client, measurementName strin
 func (ctx Context) StartListener() bool {
 	//First start the monitor client, we'll need to pass this around
 	monitorClient, err := client.NewUDPClient(client.UDPConfig{
-		Addr: "influxdb:8089",
+		Addr: "192.168.64.26:30102",
 	})
 
 	//monitorClient, err := client.NewHTTPClient(client.HTTPConfig{
@@ -66,16 +68,32 @@ func (ctx Context) StartListener() bool {
 		*(*ctx.Flags)[application.CertFileFlag].FlagValue,
 		*(*ctx.Flags)[application.KeyFileFlag].FlagValue)
 
-	listener, err := net.Listen(
-		*(*ctx.Flags)[application.TransportProtocolFlag].FlagValue,
-		*(*ctx.Flags)[application.HostNameFlag].FlagValue + ":" + *(*ctx.Flags)[application.PortNameFlag].FlagValue)
+	var listener net.Listener
+	var listenErr error
+	if *(*ctx.Flags)[application.CertFileFlag].FlagValue != "" {
+		// Load client cert
+		cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
+		if err != nil {
+			ctx.Log.Error(logErrorLoadingCertificates, err)
+			return false
+		}
+
+		listener, listenErr = tls.Listen(*(*ctx.Flags)[application.TransportProtocolFlag].FlagValue,
+			*(*ctx.Flags)[application.HostNameFlag].FlagValue + ":" + *(*ctx.Flags)[application.PortNameFlag].FlagValue,
+			&tls.Config{Certificates: []tls.Certificate{cert}})
+	} else {
+		listener, listenErr = net.Listen(
+			*(*ctx.Flags)[application.TransportProtocolFlag].FlagValue,
+			*(*ctx.Flags)[application.HostNameFlag].FlagValue + ":" + *(*ctx.Flags)[application.PortNameFlag].FlagValue)
+	}
+
 
 	// make sure we close the listener, even if we have an error in the next step
 	if listener != nil {
 		defer listener.Close()
 	}
 
-	if err != nil {
+	if listenErr != nil {
 		ctx.Log.Error(logErrorCreatingListener, err)
 		return false
 	}
@@ -103,7 +121,7 @@ func (ctx Context) handleConnections(listener net.Listener, monitorClient client
 }
 
 func (ctx Context) handleConnection(listener net.Conn, monitorClient client.Client) {
-	conn, err := net.Dial("tcp", "sample-api:8080")
+	conn, err := net.Dial("tcp", "192.168.64.26:32583")
 	if err != nil {
 		ctx.Log.Error(logErrorProxyingConnection, err)
 		return
