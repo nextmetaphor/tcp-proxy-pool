@@ -14,7 +14,6 @@ const (
 	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
 	logErrorCreatingListener          = "Error creating listener"
 	logErrorAcceptingConnection       = "Error accepting connection"
-	logErrorProxyingConnection        = "Error proxying connection"
 	logErrorCopying                   = "Error copying"
 	logErrorClosing                   = "Error closing"
 	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
@@ -121,13 +120,10 @@ func (ctx Context) handleConnections(listener net.Listener, monitorClient client
 }
 
 func (ctx Context) handleConnection(listener net.Conn, monitorClient client.Client) {
-	conn, err := net.Dial("tcp", "192.168.64.26:32583")
-	if err != nil {
-		ctx.Log.Error(logErrorProxyingConnection, err)
-		return
+	conn := ctx.GetUpstreamConnection()
+	if conn != nil {
+		ctx.proxy(listener.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
 	}
-
-	ctx.proxy(listener.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
 }
 
 func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Client) {
