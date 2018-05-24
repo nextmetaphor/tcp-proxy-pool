@@ -12,13 +12,15 @@ import (
 
 const (
 	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener          = "Error creating listener"
+	logErrorCreatingListener          = "Error creating customTLSListener"
 	logErrorAcceptingConnection       = "Error accepting connection"
 	logErrorCopying                   = "Error copying"
 	logErrorClosing                   = "Error closing"
 	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 	logErrorCreatingMonitorBatch      = "Error creating monitoring batch"
 	logErrorLoadingCertificates       = "Error loading certificates"
+	logErrorServerConnNotTCP          = "Error: server connection not TCP"
+	logErrorClientConnNotTCP          = "Error: client connection not TCP"
 )
 
 var totalConnections int
@@ -67,18 +69,20 @@ func (ctx Context) StartListener() bool {
 		*(*ctx.Flags)[application.CertFileFlag].FlagValue,
 		*(*ctx.Flags)[application.KeyFileFlag].FlagValue)
 
-	var tcpListener net.Listener
-	var listenErr error
-
 	tcpProtocol := *(*ctx.Flags)[application.TransportProtocolFlag].FlagValue
 	tcpIP := *(*ctx.Flags)[application.HostNameFlag].FlagValue
 	//tcpPort := *(*ctx.Flags)[application.PortNameFlag].FlagValue
 
-	ctx.Log.Debug("About to listen...")
-	tcpListener, listenErr = net.ListenTCP(tcpProtocol, &net.TCPAddr{IP: []byte(tcpIP), Port: 8443})
-	// make sure we close the tcpListener, even if we have an error in the next step
-	if tcpListener != nil {
-		defer tcpListener.Close()
+	cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
+	if err != nil {
+		ctx.Log.Error(logErrorLoadingCertificates, err)
+		return false
+	}
+
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+	listener, listenErr := Listen(tcpProtocol, tcpIP+":28443", tlsConfig)
+	if listener != nil {
+		defer listener.Close()
 	}
 
 	if listenErr != nil {
@@ -86,29 +90,12 @@ func (ctx Context) StartListener() bool {
 		return false
 	}
 
-	// add TLS configuration if required
-	if *(*ctx.Flags)[application.CertFileFlag].FlagValue != "" {
-		// Load client cert
-		cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
-		if err != nil {
-			ctx.Log.Error(logErrorLoadingCertificates, err)
-			return false
-		}
-
-		ctx.Log.Debug("Definitely listening on a TLS connection...")
-		tcpListener = NewListener(tcpListener, &tls.Config{Certificates: []tls.Certificate{cert}})
-	} else {
-		ctx.Log.Debug("Definitely NOT listening on a TLS connection...")
-	}
-
-	ctx.handleConnections(tcpListener, monitorClient)
+	ctx.handleConnections(listener, monitorClient)
 
 	return true
 }
 
-func (ctx Context) handleConnections(tcpListener net.Listener, monitorClient client.Client) {
-	listener := tcpListener
-
+func (ctx Context) handleConnections(listener net.Listener, monitorClient client.Client) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -125,13 +112,14 @@ func (ctx Context) handleConnections(tcpListener net.Listener, monitorClient cli
 }
 
 func (ctx Context) handleConnection(serverConn net.Conn, monitorClient client.Client) {
-	conn := ctx.GetUpstreamConnection()
-	if conn != nil {
-		ctx.proxy(serverConn.(*tcpConnection).InnerConn.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
+	upstreamConn := ctx.GetUpstreamConnection()
+	if upstreamConn != nil {
+		//ctx.proxy(serverConn.(*customTCPConn).InnerConn.(*net.TCPConn), upstreamConn.(*net.TCPConn), monitorClient)
+		ctx.proxy(serverConn, upstreamConn, monitorClient)
 	}
 }
 
-func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Client) {
+func (ctx Context) proxy(server, client net.Conn, monitorClient client.Client) {
 	clientClosedChannel := make(chan struct{}, 1)
 	serverClosedChannel := make(chan struct{}, 1)
 
@@ -141,11 +129,23 @@ func (ctx Context) proxy(server, client *net.TCPConn, monitorClient client.Clien
 	var waitChannel chan struct{}
 	select {
 	case <-clientClosedChannel:
-		server.SetLinger(0)
-		server.CloseRead()
+		if customTCPConn, customTCPConnErr := server.(*customTCPConn); customTCPConnErr {
+			if tcpConn, tcpConnErr := customTCPConn.InnerConn.(*net.TCPConn); tcpConnErr {
+				tcpConn.SetLinger(0)
+				tcpConn.Close()
+			} else {
+				ctx.Log.Warn(logErrorServerConnNotTCP)
+			}
+		} else {
+			ctx.Log.Warn(logErrorServerConnNotTCP)
+		}
 		waitChannel = serverClosedChannel
 	case <-serverClosedChannel:
-		client.CloseRead()
+		if tcpConn, tcpConnErr := client.(*net.TCPConn); tcpConnErr {
+			tcpConn.CloseRead()
+		}  else {
+			ctx.Log.Warn(logErrorClientConnNotTCP)
+		}
 		waitChannel = clientClosedChannel
 	}
 

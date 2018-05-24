@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	//logger.Formatter = &logrus.JSONFormatter{}
+	logger.Formatter = &logrus.JSONFormatter{}
 }
 
 func Get(level string) *logrus.Logger {

@@ -52,7 +52,7 @@ func CreateFlags() CommandLineFlags {
 		},
 		TransportProtocolFlag: &CommandLineFlag{
 			ShortName:    't',
-			DefaultValue: "tcp",
+			DefaultValue: "tcp4",
 			Help:         "transport protocol to use",
 		},
 		LogLevelFlag: &CommandLineFlag{

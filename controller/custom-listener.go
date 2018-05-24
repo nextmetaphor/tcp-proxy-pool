@@ -7,32 +7,32 @@ import (
 )
 
 type (
-	listener struct {
+	customTLSListener struct {
 		net.Listener
 		config *tls.Config
 	}
 
-	tcpConnection struct {
+	customTCPConn struct {
 		tls.Conn
 		InnerConn net.Conn
 	}
 )
 
-func (l *listener) Accept() (net.Conn, error) {
-	c, err := l.Listener.Accept()
+func (l *customTLSListener) Accept() (net.Conn, error) {
+	tcpConn, err := l.Listener.Accept()
 	if err != nil {
 		return nil, err
 	}
-	daConn := tls.Server(c, l.config)
+	tlsConn := tls.Server(tcpConn, l.config)
 
-	return &tcpConnection{
-		Conn:      *daConn,
-		InnerConn: c,
+	return &customTCPConn{
+		Conn:      *tlsConn,
+		InnerConn: tcpConn,
 	}, nil
 }
 
 func NewListener(inner net.Listener, config *tls.Config) net.Listener {
-	l := new(listener)
+	l := new(customTLSListener)
 	l.Listener = inner
 	l.config = config
 	return l

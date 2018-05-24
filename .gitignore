@@ -4,3 +4,5 @@ vendor/**
 tcp-proxy-pool
 main
 *.log
+*.crt
+*.key
