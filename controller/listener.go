@@ -7,7 +7,7 @@ import (
 	"github.com/influxdata/influxdb/client/v2"
 	"time"
 	"log"
-	tls "crypto/tls"
+	"crypto/tls"
 )
 
 const (
@@ -67,8 +67,26 @@ func (ctx Context) StartListener() bool {
 		*(*ctx.Flags)[application.CertFileFlag].FlagValue,
 		*(*ctx.Flags)[application.KeyFileFlag].FlagValue)
 
-	var listener net.Listener
+	var tcpListener net.Listener
 	var listenErr error
+
+	tcpProtocol := *(*ctx.Flags)[application.TransportProtocolFlag].FlagValue
+	tcpIP := *(*ctx.Flags)[application.HostNameFlag].FlagValue
+	//tcpPort := *(*ctx.Flags)[application.PortNameFlag].FlagValue
+
+	ctx.Log.Debug("About to listen...")
+	tcpListener, listenErr = net.ListenTCP(tcpProtocol, &net.TCPAddr{IP: []byte(tcpIP), Port: 8443})
+	// make sure we close the tcpListener, even if we have an error in the next step
+	if tcpListener != nil {
+		defer tcpListener.Close()
+	}
+
+	if listenErr != nil {
+		ctx.Log.Error(logErrorCreatingListener, err)
+		return false
+	}
+
+	// add TLS configuration if required
 	if *(*ctx.Flags)[application.CertFileFlag].FlagValue != "" {
 		// Load client cert
 		cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
@@ -77,32 +95,20 @@ func (ctx Context) StartListener() bool {
 			return false
 		}
 
-		listener, listenErr = tls.Listen(*(*ctx.Flags)[application.TransportProtocolFlag].FlagValue,
-			*(*ctx.Flags)[application.HostNameFlag].FlagValue + ":" + *(*ctx.Flags)[application.PortNameFlag].FlagValue,
-			&tls.Config{Certificates: []tls.Certificate{cert}})
+		ctx.Log.Debug("Definitely listening on a TLS connection...")
+		tcpListener = NewListener(tcpListener, &tls.Config{Certificates: []tls.Certificate{cert}})
 	} else {
-		listener, listenErr = net.Listen(
-			*(*ctx.Flags)[application.TransportProtocolFlag].FlagValue,
-			*(*ctx.Flags)[application.HostNameFlag].FlagValue + ":" + *(*ctx.Flags)[application.PortNameFlag].FlagValue)
+		ctx.Log.Debug("Definitely NOT listening on a TLS connection...")
 	}
 
-
-	// make sure we close the listener, even if we have an error in the next step
-	if listener != nil {
-		defer listener.Close()
-	}
-
-	if listenErr != nil {
-		ctx.Log.Error(logErrorCreatingListener, err)
-		return false
-	}
-
-	ctx.handleConnections(listener, monitorClient)
+	ctx.handleConnections(tcpListener, monitorClient)
 
 	return true
 }
 
-func (ctx Context) handleConnections(listener net.Listener, monitorClient client.Client) {
+func (ctx Context) handleConnections(tcpListener net.Listener, monitorClient client.Client) {
+	listener := tcpListener
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -115,14 +121,13 @@ func (ctx Context) handleConnections(listener net.Listener, monitorClient client
 			map[string]interface{}{"request-count": totalConnections})
 
 		go ctx.handleConnection(conn, monitorClient)
-
 	}
 }
 
-func (ctx Context) handleConnection(listener net.Conn, monitorClient client.Client) {
+func (ctx Context) handleConnection(serverConn net.Conn, monitorClient client.Client) {
 	conn := ctx.GetUpstreamConnection()
 	if conn != nil {
-		ctx.proxy(listener.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
+		ctx.proxy(serverConn.(*tcpConnection).InnerConn.(*net.TCPConn), conn.(*net.TCPConn), monitorClient)
 	}
 }
 
