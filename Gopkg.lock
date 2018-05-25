@@ -23,10 +23,41 @@
   revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
 
 [[projects]]
+  name = "github.com/aws/aws-sdk-go-v2"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/ec2rolecreds",
+    "aws/endpointcreds",
+    "aws/endpoints",
+    "aws/external",
+    "aws/signer/v4",
+    "aws/stscreds",
+    "internal/awsutil",
+    "internal/sdk",
+    "private/protocol",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/xml/xmlutil",
+    "service/sts"
+  ]
+  revision = "3383499f1024e86a3c68200f9bdc6759ee20eb70"
+  version = "v2.0.0-preview.3"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
+  version = "v1.36.0"
 
 [[projects]]
   name = "github.com/influxdata/influxdb"
@@ -37,6 +68,11 @@
   ]
   revision = "02d7d4f043b34ecb4e9b2dbec298c6f9450c2a32"
   version = "v1.5.2"
+
+[[projects]]
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  revision = "0b12d6b5"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -74,6 +110,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e98bdda947a39f037538d992fd94529c046729a93c7c2be7d13e0b18d0fa5564"
+  inputs-digest = "32b9d3a9c150af7014690f35863d4d9c82b1dffc87cfced82ea36c5ceb0813fd"
   solver-name = "gps-cdcl"
   solver-version = 1
