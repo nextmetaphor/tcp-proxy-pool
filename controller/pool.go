@@ -27,9 +27,13 @@ type (
 	}
 
 	ContainerPool map[string]Container
+
+	ContainerManager interface {
+		CreateContainer() Container
+	}
 )
 
-func CreateContainer(pool *ContainerPool) (containerId string, err error) {
+func CreateContainer(pool *ContainerPool, cm ContainerManager) (containerId string, err error) {
 	if pool == nil {
 		return "", errors.New(errorContainerPoolNilCannotCreate)
 	}
@@ -37,13 +41,10 @@ func CreateContainer(pool *ContainerPool) (containerId string, err error) {
 	if pool != nil {
 		// TODO - make call to create container
 
-		(*pool)[containerId] = Container{
-			ExternalId: containerId,
-			StartTime:  time.Now(),
-		}
+		(*pool)[containerId] = cm.CreateContainer()
 	}
 
-	return containerId, nil
+	return (*pool)[containerId].ExternalId, nil
 }
 
 func (ctx Context) DestroyContainer(containerId string, pool *ContainerPool) (err error) {
@@ -57,13 +58,14 @@ func (ctx Context) DestroyContainer(containerId string, pool *ContainerPool) (er
 }
 
 func (ctx Context) InitialiseContainerPool() (pool ContainerPool) {
+	cm  := ECSContainerManager{}
 
 	// TODO - pool size needs to be a parameter
 	poolSize := 4
 	pool = make(ContainerPool, poolSize)
 
 	for i := 0; i < poolSize; i++ {
-		id, err := CreateContainer(&pool)
+		id, err := CreateContainer(&pool, cm)
 		if err != nil {
 			ctx.Log.Error(logErrorCreatingContainer, err)
 			break

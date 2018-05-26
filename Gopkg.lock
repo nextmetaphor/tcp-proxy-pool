@@ -38,14 +38,17 @@
     "internal/awsutil",
     "internal/sdk",
     "private/protocol",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
+    "service/ecs",
     "service/sts"
   ]
-  revision = "3383499f1024e86a3c68200f9bdc6759ee20eb70"
-  version = "v2.0.0-preview.3"
+  revision = "ff1a530c31507c97cf5edbee226e604ca08661cc"
+  version = "v2.0.0-preview.4"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -66,8 +69,8 @@
     "models",
     "pkg/escape"
   ]
-  revision = "02d7d4f043b34ecb4e9b2dbec298c6f9450c2a32"
-  version = "v1.5.2"
+  revision = "89e084a80fb1e0bf5e7d38038e3367f821fdf3d7"
+  version = "v1.5.3"
 
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
@@ -82,7 +85,10 @@
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
-  packages = ["."]
+  packages = [
+    ".",
+    "hooks/test"
+  ]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
 
@@ -96,7 +102,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
+  revision = "a3beeb748656e13e54256fd2cde19e058f41f60f"
 
 [[projects]]
   branch = "master"
@@ -105,11 +111,11 @@
     "unix",
     "windows"
   ]
-  revision = "7c87d13f8e835d2fb3a70a2912c811ed0c1d241b"
+  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "32b9d3a9c150af7014690f35863d4d9c82b1dffc87cfced82ea36c5ceb0813fd"
+  inputs-digest = "e27413fb3809b2e5a183d296f5601827d8cb40b7e0b1250313be8a21ada08359"
   solver-name = "gps-cdcl"
   solver-version = 1
