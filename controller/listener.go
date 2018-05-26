@@ -8,19 +8,28 @@ import (
 )
 
 const (
-	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener          = "Error creating customTLSListener"
-	logErrorAcceptingConnection       = "Error accepting connection"
-	logErrorCopying                   = "Error copying"
-	logErrorClosing                   = "Error closing"
-	logErrorLoadingCertificates       = "Error loading certificates"
-	logErrorServerConnNotTCP          = "Error: server connection not TCP"
-	logErrorClientConnNotTCP          = "Error: client connection not TCP"
+	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
+	logErrorCreatingListener    = "Error creating customTLSListener"
+	logErrorAcceptingConnection = "Error accepting connection"
+	logErrorCopying             = "Error copying"
+	logErrorClosing             = "Error closing"
+	logErrorLoadingCertificates = "Error loading certificates"
+	logErrorServerConnNotTCP    = "Error: server connection not TCP"
+	logErrorClientConnNotTCP    = "Error: client connection not TCP"
 )
 
-var totalConnections int
+type (
+)
+
+var (
+	totalConnections int
+	containerPool ContainerPool
+)
+
 
 func (ctx Context) StartListener() bool {
+	containerPool = ctx.InitialiseContainerPool()
+
 	ctx.Log.Infof(logSecureServerStarting,
 		*(*ctx.Flags)[application.HostNameFlag].FlagValue,
 		*(*ctx.Flags)[application.PortNameFlag].FlagValue,
@@ -59,13 +68,16 @@ func (ctx Context) handleConnections(listener net.Listener) {
 		if err != nil {
 			ctx.Log.Error(logErrorAcceptingConnection, err)
 		}
-		totalConnections++
+
 
 		go ctx.handleConnection(conn)
 	}
 }
 
 func (ctx Context) handleConnection(serverConn net.Conn) {
+	// we have a connect request
+	totalConnections++
+
 	upstreamConn := ctx.GetUpstreamConnection()
 	if upstreamConn != nil {
 		ctx.proxy(serverConn, upstreamConn)
@@ -85,18 +97,21 @@ func (ctx Context) proxy(server, client net.Conn) {
 		if customTCPConn, customTCPConnErr := server.(*customTCPConn); customTCPConnErr {
 			if tcpConn, tcpConnErr := customTCPConn.InnerConn.(*net.TCPConn); tcpConnErr {
 				tcpConn.SetLinger(0)
-				tcpConn.Close()
+				tcpConn.CloseRead()
 			} else {
 				ctx.Log.Warn(logErrorServerConnNotTCP)
+				customTCPConn.InnerConn.Close()
 			}
 		} else {
 			ctx.Log.Warn(logErrorServerConnNotTCP)
+			server.Close()
 		}
 		waitChannel = serverClosedChannel
+
 	case <-serverClosedChannel:
 		if tcpConn, tcpConnErr := client.(*net.TCPConn); tcpConnErr {
 			tcpConn.CloseRead()
-		}  else {
+		} else {
 			ctx.Log.Warn(logErrorClientConnNotTCP)
 		}
 		waitChannel = clientClosedChannel
