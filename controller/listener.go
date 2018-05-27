@@ -16,19 +16,12 @@ const (
 	logErrorLoadingCertificates = "Error loading certificates"
 	logErrorServerConnNotTCP    = "Error: server connection not TCP"
 	logErrorClientConnNotTCP    = "Error: client connection not TCP"
+	logErrorAssigningContainer  = "Error: cannot assign container"
+	logErrorProxyingConnection  = "Error proxying connection"
 )
 
-type (
-)
-
-var (
-	totalConnections int
-	containerPool ContainerPool
-)
-
-
-func (ctx Context) StartListener() bool {
-	containerPool = ctx.InitialiseContainerPool()
+func (ctx *Context) StartListener() bool {
+	ctx.InitialiseContainerPool(ECSContainerManager{})
 
 	ctx.Log.Infof(logSecureServerStarting,
 		*(*ctx.Flags)[application.HostNameFlag].FlagValue,
@@ -62,29 +55,42 @@ func (ctx Context) StartListener() bool {
 	return true
 }
 
-func (ctx Context) handleConnections(listener net.Listener) {
+// handleConnections is called when the container pool has been initialised and the listener has been started.
+// A separate goroutine is created to handle each Accept request on the listener.
+func (ctx *Context) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			ctx.Log.Error(logErrorAcceptingConnection, err)
+			return
 		}
 
-
-		go ctx.handleConnection(conn)
+		go ctx.clientConnect(conn)
 	}
 }
 
-func (ctx Context) handleConnection(serverConn net.Conn) {
-	// we have a connect request
-	totalConnections++
-
-	upstreamConn := ctx.GetUpstreamConnection()
-	if upstreamConn != nil {
-		ctx.proxy(serverConn, upstreamConn)
+// clientConnect is called in a separate goroutine for every successful Accept request on the server listener.
+func (ctx *Context) clientConnect(serverConn net.Conn) {
+	c, err := ctx.AssociateClientWithContainer(serverConn)
+	if err != nil {
+		ctx.Log.Warn(logErrorAssigningContainer, err)
+		// TODO - check for errors
+		serverConn.Close()
+		return
 	}
+
+	if err := ctx.ConnectClientToContainer(c); err != nil {
+		ctx.Log.Error(logErrorProxyingConnection, err)
+		return
+	}
+
+	ctx.proxy(c)
 }
 
-func (ctx Context) proxy(server, client net.Conn) {
+func (ctx *Context) proxy(c *Container) {
+	server := c.ConnectionFromClient
+	client := c.ConnectionToContainer
+
 	clientClosedChannel := make(chan struct{}, 1)
 	serverClosedChannel := make(chan struct{}, 1)
 
@@ -119,10 +125,10 @@ func (ctx Context) proxy(server, client net.Conn) {
 
 	<-waitChannel
 
-	totalConnections--
+	ctx.DissociateClientWithContainer(c)
 }
 
-func (ctx Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
+func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
 	_, err := io.Copy(dst, src);
 	if err != nil {
 		ctx.Log.Error(logErrorCopying, err)

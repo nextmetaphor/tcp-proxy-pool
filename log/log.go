@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	logger.Formatter = &logrus.JSONFormatter{}
+	//logger.Formatter = &logrus.JSONFormatter{}
 }
 
 func Get(level string) *logrus.Logger {
@@ -30,4 +30,10 @@ func Get(level string) *logrus.Logger {
 		logger.Level = logrus.InfoLevel
 	}
 	return logger
+}
+
+func LogError(err error) {
+	//ctx.Log.WithFields(logrus.Fields{
+	//	"errCode": errCode}).Warn("handleSelectNodeRequest: Error when encoding returned Node")
+
 }

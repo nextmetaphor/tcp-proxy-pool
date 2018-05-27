@@ -7,3 +7,4 @@ main
 *.crt
 *.key
 coverage.out
+*.jmx

@@ -11,5 +11,6 @@ type (
 		Log            *logrus.Logger
 		Flags          *application.CommandLineFlags
 		InfluxDBClient *client.Client
+		ContainerPool  *ContainerPool
 	}
 )

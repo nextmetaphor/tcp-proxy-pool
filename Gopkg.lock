@@ -23,44 +23,28 @@
   revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
 
 [[projects]]
-  name = "github.com/aws/aws-sdk-go-v2"
-  packages = [
-    "aws",
-    "aws/awserr",
-    "aws/defaults",
-    "aws/ec2metadata",
-    "aws/ec2rolecreds",
-    "aws/endpointcreds",
-    "aws/endpoints",
-    "aws/external",
-    "aws/signer/v4",
-    "aws/stscreds",
-    "internal/awsutil",
-    "internal/sdk",
-    "private/protocol",
-    "private/protocol/json/jsonutil",
-    "private/protocol/jsonrpc",
-    "private/protocol/query",
-    "private/protocol/query/queryutil",
-    "private/protocol/rest",
-    "private/protocol/xml/xmlutil",
-    "service/ecs",
-    "service/sts"
-  ]
-  revision = "ff1a530c31507c97cf5edbee226e604ca08661cc"
-  version = "v2.0.0-preview.4"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/go-ini/ini"
+  name = "github.com/gorilla/context"
   packages = ["."]
-  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
-  version = "v1.36.0"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  revision = "90663712d74cb411cbef281bc1e08c19d1a76145"
+  version = "v1.3.0"
+
+[[projects]]
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
 
 [[projects]]
   name = "github.com/influxdata/influxdb"
@@ -73,11 +57,6 @@
   version = "v1.5.3"
 
 [[projects]]
-  name = "github.com/jmespath/go-jmespath"
-  packages = ["."]
-  revision = "0b12d6b5"
-
-[[projects]]
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
@@ -85,10 +64,7 @@
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
-  packages = [
-    ".",
-    "hooks/test"
-  ]
+  packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
 
@@ -116,6 +92,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e27413fb3809b2e5a183d296f5601827d8cb40b7e0b1250313be8a21ada08359"
+  inputs-digest = "267e2cd7ac91bcdaf9bad988ac7922d30de28b84810baf34e83e8f9053dca866"
   solver-name = "gps-cdcl"
   solver-version = 1

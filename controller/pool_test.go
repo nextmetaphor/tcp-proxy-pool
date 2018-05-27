@@ -13,7 +13,7 @@ type (
 
 func (tcm TestContainerManager) CreateContainer() Container {
 	return Container{
-		ExternalId: "42",
+		ExternalID: "42",
 		//StartTime:  12,
 	}
 }

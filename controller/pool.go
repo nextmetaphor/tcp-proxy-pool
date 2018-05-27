@@ -4,84 +4,129 @@ import (
 	"net"
 	"time"
 	"errors"
+	"sync"
+	"strconv"
 )
 
 const (
-	logErrorProxyingConnection = "Error proxying connection"
-	logErrorCreatingContainer  = "Error creating container"
-	logCreatedContainer = "Created container with ID [%s]"
+	logErrorCreatingContainer     = "Error creating container"
+	logCreatedContainer           = "Created container with ID [%s]"
+	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
+	logContainerDoesNotExist      = "The container with ID [%s] to disassociate from the client does not exist in the pool"
 
 	errorContainerPoolNilCannotCreate  = "Pool is nil; cannot create container"
+	errorCreatedContainerCannotBeNil   = "Created container cannot be nil"
 	errorContainerPoolNilCannotDestroy = "Pool is nil; cannot destroy container"
+	errorContainerPoolFull             = "Pool is full; cannot allocate connection to container"
 )
 
 type (
 	Container struct {
-		ExternalId string
-		StartTime  time.Time
-		IPAddress  string
-		Port       int
-		IsReady    bool
-		ServerConn net.Conn
-		ClientConn net.Conn
+		sync.RWMutex
+		ExternalID            string
+		StartTime             time.Time
+		IPAddress             string
+		Port                  int
+		IsReady               bool
+		ConnectionFromClient  net.Conn
+		ConnectionToContainer net.Conn
 	}
 
-	ContainerPool map[string]Container
+	ContainerPool map[string]*Container
 
 	ContainerManager interface {
-		CreateContainer() Container
+		CreateContainer() *Container
 	}
 )
 
-func CreateContainer(pool *ContainerPool, cm ContainerManager) (containerId string, err error) {
-	if pool == nil {
-		return "", errors.New(errorContainerPoolNilCannotCreate)
+// InitialiseContainerPool creates a connection pool
+func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
+	pool := make(ContainerPool)
+	ctx.ContainerPool = &pool
+
+	// TODO - this needs to be a configuration parameter
+	poolSize := 10
+
+	for i := 0; i < poolSize; i++ {
+		c, err := CreateContainer(ctx.ContainerPool, cm)
+		if err != nil {
+			ctx.Log.Error(logErrorCreatingContainer, err)
+			break
+		}
+		ctx.Log.Infof(logCreatedContainer, c.ExternalID)
 	}
-
-	if pool != nil {
-		// TODO - make call to create container
-
-		(*pool)[containerId] = cm.CreateContainer()
-	}
-
-	return (*pool)[containerId].ExternalId, nil
 }
 
-func (ctx Context) DestroyContainer(containerId string, pool *ContainerPool) (err error) {
+// CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
+// created container.
+func CreateContainer(pool *ContainerPool, cm ContainerManager) (c *Container, err error) {
+	if pool == nil {
+		return c, errors.New(errorContainerPoolNilCannotCreate)
+	}
+
+	c = cm.CreateContainer()
+	if c == nil {
+		return c, errors.New(errorCreatedContainerCannotBeNil)
+	}
+
+	(*pool)[c.ExternalID] = c
+
+	return c, nil
+}
+
+func (ctx *Context) DestroyContainer(containerID string, pool *ContainerPool) (err error) {
 	if pool == nil {
 		return errors.New(errorContainerPoolNilCannotDestroy)
 	}
 
 	// TODO - make external call to remove container
-	delete((*pool), containerId)
+	delete((*pool), containerID)
 	return nil
 }
 
-func (ctx Context) InitialiseContainerPool() (pool ContainerPool) {
-	cm  := ECSContainerManager{}
 
-	// TODO - pool size needs to be a parameter
-	poolSize := 4
-	pool = make(ContainerPool, poolSize)
 
-	for i := 0; i < poolSize; i++ {
-		id, err := CreateContainer(&pool, cm)
-		if err != nil {
-			ctx.Log.Error(logErrorCreatingContainer, err)
-			break
+func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*Container, error) {
+	// TODO - would it be better to lock the whole pool?
+	for _, container := range *ctx.ContainerPool {
+		// find the first container with no current connection from the client
+		if container.ConnectionToContainer == nil {
+			container.Lock()
+			if container.ConnectionFromClient == nil {
+				container.ConnectionFromClient = conn
+				container.Unlock()
+				return container, nil
+			}
+
+			// ...otherwise another thread has beat us to it - try and find another one
+			container.Unlock()
 		}
-		ctx.Log.Infof(logCreatedContainer, id)
 	}
 
-	return pool
+	return nil, errors.New(errorContainerPoolFull)
 }
 
-func (ctx Context) GetUpstreamConnection() net.Conn {
-	conn, err := net.Dial("tcp", "192.168.64.26:32583")
-	if err != nil {
-		ctx.Log.Error(logErrorProxyingConnection, err)
-		return nil
+func (ctx *Context) DissociateClientWithContainer(c *Container) {
+	if c == nil {
+		ctx.Log.Warnf(logNilContainerToDisassociate)
+		return
 	}
 
-	return conn
+	c.Lock()
+	defer c.Unlock()
+	c.ConnectionToContainer = nil
+	c.ConnectionFromClient = nil
+}
+
+func (ctx *Context) ConnectClientToContainer(c *Container) (error) {
+	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
+	if err != nil {
+		return err
+	}
+
+	c.Lock()
+	defer c.Unlock()
+	c.ConnectionToContainer = conn
+
+	return nil
 }

@@ -25,6 +25,10 @@ func main() {
 		Flags: &flags,
 	}
 
+	// start the monitoring service
+	go ctx.StartMonitor()
+
 	// start a listener
 	ctx.StartListener()
+
 }
