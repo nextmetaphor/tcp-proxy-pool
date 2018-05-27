@@ -6,3 +6,4 @@ main
 *.log
 *.crt
 *.key
+coverage.out
