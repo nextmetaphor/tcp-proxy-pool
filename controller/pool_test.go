@@ -11,27 +11,30 @@ type (
 	}
 )
 
-func (tcm TestContainerManager) CreateContainer() Container {
-	return Container{
+var (
+	testContainer = &Container{
 		ExternalID: "42",
 		//StartTime:  12,
 	}
+)
+
+func (tcm TestContainerManager) CreateContainer() *Container {
+	return testContainer
 }
 
 func Test_CreateContainer(t *testing.T) {
 	tcm  := TestContainerManager{}
 
 	t.Run("NilPool", func(t *testing.T) {
-		id, err := CreateContainer(nil, tcm)
-		assert.Empty(t, id, "empty id string should have been returned")
+		c, err := CreateContainer(nil, tcm)
+		assert.Nil(t, c, "nil container should have been returned")
 		assert.NotNil(t, err, "error should have been returned")
 	})
 
 	t.Run("EmptyPool", func(t *testing.T) {
 		pool := make(ContainerPool, 0)
-		id, err := CreateContainer(&pool, tcm)
+		c, err := CreateContainer(&pool, tcm)
 		assert.Nil(t, err, "nil error should have been returned")
-		assert.Equal(t, "42", id, "container id incorrect")
+		assert.Equal(t, testContainer, c, "returned container incorrect")
 	})
-
 }
