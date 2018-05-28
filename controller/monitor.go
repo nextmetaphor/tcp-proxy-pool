@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"os"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
@@ -25,12 +26,13 @@ func (ctx *Context) StartMonitor() {
 	r.HandleFunc(urlMonitor, ctx.handleMonitorRequest).Methods(http.MethodGet)
 
 	ctx.Log.Error(server.ListenAndServe())
+
 }
 
 func (ctx *Context) handleMonitorRequest(writer http.ResponseWriter, request *http.Request) {
 	if ctx.ContainerPool != nil {
 		if err := json.NewEncoder(writer).Encode(ctx.ContainerPool); err != nil {
-			ctx.Log.Error(logCannotEncodeConnectionPool, err)
+			log.LogError(logCannotEncodeConnectionPool, err, ctx.Log)
 			writer.WriteHeader(http.StatusInternalServerError)
 		}
 	} else {

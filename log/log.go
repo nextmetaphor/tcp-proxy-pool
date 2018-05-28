@@ -8,6 +8,8 @@ const (
 	LevelError = "error"
 	LevelWarn  = "warn"
 	LevelDebug = "debug"
+
+	logFieldErrorCause = "rootError"
 )
 
 var (
@@ -32,8 +34,10 @@ func Get(level string) *logrus.Logger {
 	return logger
 }
 
-func LogError(err error) {
-	//ctx.Log.WithFields(logrus.Fields{
-	//	"errCode": errCode}).Warn("handleSelectNodeRequest: Error when encoding returned Node")
+func LogError(description string, err error, logger *logrus.Logger) {
+	if logger != nil {
+		logger.WithFields(logrus.Fields{
+			logFieldErrorCause: err}).Error(description)
+	}
 
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"io"
 	"crypto/tls"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
@@ -35,7 +36,7 @@ func (ctx *Context) StartListener() bool {
 
 	cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
 	if err != nil {
-		ctx.Log.Error(logErrorLoadingCertificates, err)
+		log.LogError(logErrorLoadingCertificates, err, ctx.Log)
 		return false
 	}
 
@@ -46,7 +47,7 @@ func (ctx *Context) StartListener() bool {
 	}
 
 	if listenErr != nil {
-		ctx.Log.Error(logErrorCreatingListener, err)
+		log.LogError(logErrorCreatingListener, err, ctx.Log)
 		return false
 	}
 
@@ -61,7 +62,7 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			ctx.Log.Error(logErrorAcceptingConnection, err)
+			log.LogError(logErrorAcceptingConnection, err, ctx.Log)
 			return
 		}
 
@@ -80,7 +81,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 	}
 
 	if err := ctx.ConnectClientToContainer(c); err != nil {
-		ctx.Log.Error(logErrorProxyingConnection, err)
+		log.LogError(logErrorProxyingConnection, err, ctx.Log)
 		return
 	}
 
@@ -131,11 +132,11 @@ func (ctx *Context) proxy(c *Container) {
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
 	_, err := io.Copy(dst, src);
 	if err != nil {
-		ctx.Log.Error(logErrorCopying, err)
+		log.LogError(logErrorCopying, err, ctx.Log)
 	}
 
 	if err := src.Close(); err != nil {
-		ctx.Log.Error(logErrorClosing, err)
+		log.LogError(logErrorClosing, err, ctx.Log)
 	}
 
 	sourceClosedChannel <- struct{}{}

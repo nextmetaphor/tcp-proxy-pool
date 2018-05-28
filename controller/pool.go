@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 	"strconv"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
@@ -50,7 +51,7 @@ func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
 	for i := 0; i < poolSize; i++ {
 		c, err := CreateContainer(ctx.ContainerPool, cm)
 		if err != nil {
-			ctx.Log.Error(logErrorCreatingContainer, err)
+			log.LogError(logErrorCreatingContainer, err, ctx.Log)
 			break
 		}
 		ctx.Log.Infof(logCreatedContainer, c.ExternalID)
