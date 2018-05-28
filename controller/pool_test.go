@@ -6,31 +6,37 @@ import (
 )
 
 type (
-	TestContainerManager struct {
+	TestContainerManager struct {}
 
-	}
+	TestNilContainerManager struct {}
 )
 
 var (
 	testContainer1 = &Container{
 		ExternalID: "1",
-		//StartTime:  12,
 	}
 
 	testContainer2 = &Container{
 		ExternalID: "2",
-		//StartTime:  12,
 	}
 
 	testContainer42 = &Container{
 		ExternalID: "42",
-		//StartTime:  12,
 	}
 )
+
+func (tcm TestNilContainerManager) CreateContainer() *Container {
+	return nil
+}
+
+func (cm TestNilContainerManager) DestroyContainer(externalID string) {}
 
 func (tcm TestContainerManager) CreateContainer() *Container {
 	return testContainer42
 }
+
+func (tcm TestContainerManager) DestroyContainer(externalID string) {}
+
 
 func Test_CreateContainer(t *testing.T) {
 	tcm  := TestContainerManager{}
@@ -52,8 +58,8 @@ func Test_CreateContainer(t *testing.T) {
 
 	t.Run("ExistingPoolNewContainer", func(t *testing.T) {
 		pool := make(ContainerPool, 0)
-		pool["1"] = testContainer1
-		pool["2"] = testContainer2
+		pool[testContainer1.ExternalID] = testContainer1
+		pool[testContainer2.ExternalID] = testContainer2
 
 		c, err := CreateContainer(&pool, tcm)
 
@@ -63,6 +69,47 @@ func Test_CreateContainer(t *testing.T) {
 		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
 		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
 		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+	})
+
+	t.Run("ExistingPoolExistingContainer", func(t *testing.T) {
+		pool := make(ContainerPool, 0)
+		pool[testContainer1.ExternalID] = testContainer1
+		pool[testContainer2.ExternalID] = testContainer2
+		pool[testContainer42.ExternalID] = testContainer42
+
+		c, err := CreateContainer(&pool, tcm)
+
+		assert.Nil(t, err, "nil error should have been returned")
+		assert.Equal(t, testContainer42, c, "returned container incorrect")
+		assert.Equal(t, 3, len(pool), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+	})
+
+	t.Run("ExistingPoolNilContainer", func(t *testing.T) {
+		pool := make(ContainerPool, 0)
+		pool[testContainer1.ExternalID] = testContainer1
+		pool[testContainer2.ExternalID] = testContainer2
+		pool[testContainer42.ExternalID] = testContainer42
+
+		c, err := CreateContainer(&pool, TestNilContainerManager{})
+
+		assert.NotNil(t, err, "error expected")
+		assert.Nil(t, c, "nil container expected")
+		assert.Equal(t, 3, len(pool), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+	})
+}
+
+func Test_DestroyContainer(t *testing.T) {
+	tcm  := TestContainerManager{}
+
+	t.Run("NilPool", func(t *testing.T) {
+		err := DestroyContainer("42", nil, tcm)
+		assert.NotNil(t, err, "error should have been returned")
 	})
 
 }

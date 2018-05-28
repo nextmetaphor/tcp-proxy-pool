@@ -35,8 +35,10 @@ type (
 
 	ContainerPool map[string]*Container
 
+	// TODO - need to return errors on both methods
 	ContainerManager interface {
 		CreateContainer() *Container
+		DestroyContainer(externalID string)
 	}
 )
 
@@ -75,17 +77,15 @@ func CreateContainer(pool *ContainerPool, cm ContainerManager) (c *Container, er
 	return c, nil
 }
 
-func (ctx *Context) DestroyContainer(containerID string, pool *ContainerPool) (err error) {
+func DestroyContainer(containerID string, pool *ContainerPool, cm ContainerManager) (err error) {
 	if pool == nil {
 		return errors.New(errorContainerPoolNilCannotDestroy)
 	}
 
-	// TODO - make external call to remove container
+	cm.DestroyContainer(containerID)
 	delete((*pool), containerID)
 	return nil
 }
-
-
 
 func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*Container, error) {
 	// TODO - would it be better to lock the whole pool?
