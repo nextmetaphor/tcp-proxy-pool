@@ -4,6 +4,7 @@ import (
 	"github.com/influxdata/influxdb/client/v2"
 	"time"
 	"log"
+	"strings"
 )
 
 const (
@@ -11,9 +12,12 @@ const (
 )
 
 func (ctx *Context) CreateMonitor() *client.Client {
-	// TODO remove hardcoded address
+	if (ctx == nil) || (strings.TrimSpace(ctx.Settings.Monitor.Address) == "") {
+		return nil
+	}
+
 	monitorClient, err := client.NewUDPClient(client.UDPConfig{
-		Addr: "192.168.64.26:30102",
+		Addr: ctx.Settings.Monitor.Address,
 	})
 	if err != nil {
 		ctx.Logger.Error(logErrorCreatingMonitorConnection, err)
@@ -24,10 +28,14 @@ func (ctx *Context) CreateMonitor() *client.Client {
 	return &monitorClient
 }
 
-func (ctx Context) writePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
-	// TODO - new batch every time??? hardcoded database???
+func (ctx *Context) WritePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
+	if (ctx == nil) || (strings.TrimSpace(ctx.Settings.Monitor.Address) == "") {
+		return
+	}
+
+	// TODO - new batch every time???
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database:  "tcp-proxy-pool",
+		Database:  ctx.Settings.Monitor.Database,
 		Precision: "ns",
 	})
 	if err != nil {

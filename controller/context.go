@@ -2,7 +2,6 @@ package controller
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/influxdata/influxdb/client/v2"
 	"github.com/nextmetaphor/tcp-proxy-pool/configuration"
 )
@@ -10,8 +9,8 @@ import (
 type (
 	Context struct {
 		Logger         *logrus.Logger
-		Settings       *configuration.ApplicationSettings
-		Flags          *application.CommandLineFlags
+		Settings       configuration.ApplicationSettings
+		//Flags          *application.CommandLineFlags
 		InfluxDBClient *client.Client
 		ContainerPool  *ContainerPool
 	}

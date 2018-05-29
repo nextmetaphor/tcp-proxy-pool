@@ -2,7 +2,6 @@ package controller
 
 import (
 	"net"
-	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"io"
 	"crypto/tls"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
@@ -31,23 +30,24 @@ func (ctx *Context) StartListener() bool {
 	}
 
 	ctx.Logger.Infof(logSecureServerStarting,
-		*(*ctx.Flags)[application.HostNameFlag].FlagValue,
-		*(*ctx.Flags)[application.PortNameFlag].FlagValue,
-		*(*ctx.Flags)[application.CertFileFlag].FlagValue,
-		*(*ctx.Flags)[application.KeyFileFlag].FlagValue)
+		ctx.Settings.Listener.Host,
+		ctx.Settings.Listener.Port,
+		ctx.Settings.Listener.CertFile,
+		ctx.Settings.Listener.KeyFile)
 
-	tcpProtocol := *(*ctx.Flags)[application.TransportProtocolFlag].FlagValue
-	tcpIP := *(*ctx.Flags)[application.HostNameFlag].FlagValue
-	//tcpPort := *(*ctx.Flags)[application.PortNameFlag].FlagValue
 
-	cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
+	tcpProtocol := ctx.Settings.Listener.Transport
+	tcpIP := ctx.Settings.Listener.Host
+	tcpPort := ctx.Settings.Listener.Port
+
+	cert, err := tls.LoadX509KeyPair(ctx.Settings.Listener.CertFile, ctx.Settings.Listener.KeyFile)
 	if err != nil {
 		log.LogError(logErrorLoadingCertificates, err, ctx.Logger)
 		return false
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-	listener, listenErr := Listen(tcpProtocol, tcpIP+":28443", tlsConfig)
+	listener, listenErr := Listen(tcpProtocol, tcpIP+":"+tcpPort, tlsConfig)
 	if listener != nil {
 		defer listener.Close()
 	}
@@ -71,6 +71,12 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 			log.LogError(logErrorAcceptingConnection, err, ctx.Logger)
 			return
 		}
+
+		// TODO - add hostname
+		go ctx.WritePoint(
+			"connections",
+			map[string]string{"listen-requests": "request-count"},
+			map[string]interface{}{"request-count": 1})
 
 		go ctx.clientConnect(conn)
 	}
@@ -136,9 +142,21 @@ func (ctx *Context) proxy(c *Container) {
 }
 
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
-	_, err := io.Copy(dst, src);
+	bytesCopied, err := io.Copy(dst, src);
 	if err != nil {
 		log.LogError(logErrorCopying, err, ctx.Logger)
+	}
+
+	if srcIsServer {
+		go ctx.WritePoint(
+			"connections",
+			map[string]string{"bytes-copied": "total"},
+			map[string]interface{}{"bytesCopiedFromClient": bytesCopied})
+	} else {
+		go ctx.WritePoint(
+			"connections",
+			map[string]string{"bytes-copied": "total"},
+			map[string]interface{}{"bytesCopiedFromServer": bytesCopied})
 	}
 
 	if err := src.Close(); err != nil {

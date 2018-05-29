@@ -1,0 +1,16 @@
+{
+  "Listener": {
+    "Host": "",
+    "Port": "28443",
+    "Transport": "tcp4",
+    "CertFile": "server.crt",
+    "KeyFile": "server.key"
+  },
+  "Pool": {
+    "InitialSize": 2
+  },
+  "Monitor": {
+    "Address": "192.168.64.26:30102",
+    "Database": "tcp-proxy-pool"
+  }
+}
