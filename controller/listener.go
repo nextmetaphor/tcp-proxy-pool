@@ -9,22 +9,28 @@ import (
 )
 
 const (
-	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener    = "Error creating customTLSListener"
-	logErrorAcceptingConnection = "Error accepting connection"
-	logErrorCopying             = "Error copying"
-	logErrorClosing             = "Error closing"
-	logErrorLoadingCertificates = "Error loading certificates"
-	logErrorServerConnNotTCP    = "Error: server connection not TCP"
-	logErrorClientConnNotTCP    = "Error: client connection not TCP"
-	logErrorAssigningContainer  = "Error: cannot assign container"
-	logErrorProxyingConnection  = "Error proxying connection"
+	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
+	logErrorCreatingListener          = "Error creating customTLSListener"
+	logErrorAcceptingConnection       = "Error accepting connection"
+	logErrorCopying                   = "Error copying"
+	logErrorClosing                   = "Error closing"
+	logErrorLoadingCertificates       = "Error loading certificates"
+	logErrorServerConnNotTCP          = "Error: server connection not TCP"
+	logErrorClientConnNotTCP          = "Error: client connection not TCP"
+	logErrorAssigningContainer        = "Error: cannot assign container"
+	logErrorProxyingConnection        = "Error proxying connection"
+	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 )
 
 func (ctx *Context) StartListener() bool {
 	ctx.InitialiseContainerPool(ECSContainerManager{})
 
-	ctx.Log.Infof(logSecureServerStarting,
+	monitorClient := ctx.CreateMonitor()
+	if monitorClient != nil {
+		defer (*monitorClient).Close()
+	}
+
+	ctx.Logger.Infof(logSecureServerStarting,
 		*(*ctx.Flags)[application.HostNameFlag].FlagValue,
 		*(*ctx.Flags)[application.PortNameFlag].FlagValue,
 		*(*ctx.Flags)[application.CertFileFlag].FlagValue,
@@ -36,7 +42,7 @@ func (ctx *Context) StartListener() bool {
 
 	cert, err := tls.LoadX509KeyPair(*(*ctx.Flags)[application.CertFileFlag].FlagValue, *(*ctx.Flags)[application.KeyFileFlag].FlagValue)
 	if err != nil {
-		log.LogError(logErrorLoadingCertificates, err, ctx.Log)
+		log.LogError(logErrorLoadingCertificates, err, ctx.Logger)
 		return false
 	}
 
@@ -47,7 +53,7 @@ func (ctx *Context) StartListener() bool {
 	}
 
 	if listenErr != nil {
-		log.LogError(logErrorCreatingListener, err, ctx.Log)
+		log.LogError(logErrorCreatingListener, err, ctx.Logger)
 		return false
 	}
 
@@ -62,7 +68,7 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.LogError(logErrorAcceptingConnection, err, ctx.Log)
+			log.LogError(logErrorAcceptingConnection, err, ctx.Logger)
 			return
 		}
 
@@ -74,14 +80,14 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 func (ctx *Context) clientConnect(serverConn net.Conn) {
 	c, err := ctx.AssociateClientWithContainer(serverConn)
 	if err != nil {
-		ctx.Log.Warn(logErrorAssigningContainer, err)
+		ctx.Logger.Warn(logErrorAssigningContainer, err)
 		// TODO - check for errors
 		serverConn.Close()
 		return
 	}
 
 	if err := ctx.ConnectClientToContainer(c); err != nil {
-		log.LogError(logErrorProxyingConnection, err, ctx.Log)
+		log.LogError(logErrorProxyingConnection, err, ctx.Logger)
 		return
 	}
 
@@ -106,11 +112,11 @@ func (ctx *Context) proxy(c *Container) {
 				tcpConn.SetLinger(0)
 				tcpConn.CloseRead()
 			} else {
-				ctx.Log.Warn(logErrorServerConnNotTCP)
+				ctx.Logger.Warn(logErrorServerConnNotTCP)
 				customTCPConn.InnerConn.Close()
 			}
 		} else {
-			ctx.Log.Warn(logErrorServerConnNotTCP)
+			ctx.Logger.Warn(logErrorServerConnNotTCP)
 			server.Close()
 		}
 		waitChannel = serverClosedChannel
@@ -119,7 +125,7 @@ func (ctx *Context) proxy(c *Container) {
 		if tcpConn, tcpConnErr := client.(*net.TCPConn); tcpConnErr {
 			tcpConn.CloseRead()
 		} else {
-			ctx.Log.Warn(logErrorClientConnNotTCP)
+			ctx.Logger.Warn(logErrorClientConnNotTCP)
 		}
 		waitChannel = clientClosedChannel
 	}
@@ -132,11 +138,11 @@ func (ctx *Context) proxy(c *Container) {
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
 	_, err := io.Copy(dst, src);
 	if err != nil {
-		log.LogError(logErrorCopying, err, ctx.Log)
+		log.LogError(logErrorCopying, err, ctx.Logger)
 	}
 
 	if err := src.Close(); err != nil {
-		log.LogError(logErrorClosing, err, ctx.Log)
+		log.LogError(logErrorClosing, err, ctx.Logger)
 	}
 
 	sourceClosedChannel <- struct{}{}

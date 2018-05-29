@@ -21,8 +21,8 @@ func main() {
 
 	// create the main context with the logger and flags
 	ctx := controller.Context{
-		Log:   log.Get(*flags[application.LogLevelFlag].FlagValue),
-		Flags: &flags,
+		Logger: log.Get(*flags[application.LogLevelFlag].FlagValue),
+		Flags:  &flags,
 	}
 
 	// start the monitoring service

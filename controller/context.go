@@ -4,11 +4,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/influxdata/influxdb/client/v2"
+	"github.com/nextmetaphor/tcp-proxy-pool/configuration"
 )
 
 type (
 	Context struct {
-		Log            *logrus.Logger
+		Logger         *logrus.Logger
+		Settings       *configuration.ApplicationSettings
 		Flags          *application.CommandLineFlags
 		InfluxDBClient *client.Client
 		ContainerPool  *ContainerPool

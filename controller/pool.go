@@ -53,10 +53,10 @@ func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
 	for i := 0; i < poolSize; i++ {
 		c, err := CreateContainer(ctx.ContainerPool, cm)
 		if err != nil {
-			log.LogError(logErrorCreatingContainer, err, ctx.Log)
+			log.LogError(logErrorCreatingContainer, err, ctx.Logger)
 			break
 		}
-		ctx.Log.Infof(logCreatedContainer, c.ExternalID)
+		ctx.Logger.Infof(logCreatedContainer, c.ExternalID)
 	}
 }
 
@@ -109,7 +109,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*Container, err
 
 func (ctx *Context) DissociateClientWithContainer(c *Container) {
 	if c == nil {
-		ctx.Log.Warnf(logNilContainerToDisassociate)
+		ctx.Logger.Warnf(logNilContainerToDisassociate)
 		return
 	}
 

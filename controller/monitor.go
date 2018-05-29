@@ -1,41 +1,46 @@
 package controller
 
 import (
-	"net/http"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/handlers"
-	"encoding/json"
-	"strconv"
-	"os"
-	"github.com/nextmetaphor/tcp-proxy-pool/log"
+	"github.com/influxdata/influxdb/client/v2"
+	"time"
+	"log"
 )
 
 const (
-	logCannotEncodeConnectionPool = "Cannot JSON encode connection pool"
-	logContainerPoolIsNil = "Container pool is nil"
-	urlMonitor = "/monitor"
+	logErrorCreatingMonitorBatch = "Error creating monitoring batch"
 )
 
-func (ctx *Context) StartMonitor() {
-	r := mux.NewRouter()
-	server := &http.Server{
-		Addr:    "localhost:" + strconv.Itoa(8080),
-		Handler: handlers.LoggingHandler(os.Stdout, r),
+func (ctx *Context) CreateMonitor() *client.Client {
+	// TODO remove hardcoded address
+	monitorClient, err := client.NewUDPClient(client.UDPConfig{
+		Addr: "192.168.64.26:30102",
+	})
+	if err != nil {
+		ctx.Logger.Error(logErrorCreatingMonitorConnection, err)
 	}
 
-	r.HandleFunc(urlMonitor, ctx.handleMonitorRequest).Methods(http.MethodGet)
+	ctx.InfluxDBClient = &monitorClient
 
-	ctx.Log.Error(server.ListenAndServe())
-
+	return &monitorClient
 }
 
-func (ctx *Context) handleMonitorRequest(writer http.ResponseWriter, request *http.Request) {
-	if ctx.ContainerPool != nil {
-		if err := json.NewEncoder(writer).Encode(ctx.ContainerPool); err != nil {
-			log.LogError(logCannotEncodeConnectionPool, err, ctx.Log)
-			writer.WriteHeader(http.StatusInternalServerError)
-		}
-	} else {
-		ctx.Log.Error(logContainerPoolIsNil)
+func (ctx Context) writePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
+	// TODO - new batch every time??? hardcoded database???
+	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
+		Database:  "tcp-proxy-pool",
+		Precision: "ns",
+	})
+	if err != nil {
+		ctx.Logger.Error(logErrorCreatingMonitorBatch, err)
+	}
+
+	pt, err := client.NewPoint(measurementName, tags, fields, time.Now())
+	if err != nil {
+		log.Fatal(err)
+	}
+	bp.AddPoint(pt)
+
+	if err := (*ctx.InfluxDBClient).Write(bp); err != nil {
+		ctx.Logger.Error(err)
 	}
 }
