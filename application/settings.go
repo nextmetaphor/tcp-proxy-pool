@@ -24,11 +24,15 @@ type (
 	}
 
 	ECSSettings struct {
-		Cluster        string
-		TaskDefinition string
-		Subnets        []string
-		SecurityGroups []string
-		AssignPublicIP string
+		Profile                      string
+		Region                       string
+		Cluster                      string
+		TaskDefinition               string
+		LaunchType                   string
+		AssignPublicIP               string
+		Subnets                      []string
+		SecurityGroups               []string
+		MaximumContainerStartTimeSec int
 	}
 
 	Settings struct {

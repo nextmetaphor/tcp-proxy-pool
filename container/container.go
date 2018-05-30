@@ -1,19 +1,20 @@
 package container
 
-//func LoadAWSConfig() (cfg aws.Config, err error) {
-//	cfg, err = external.LoadDefaultAWSConfig()
-//	if err == nil {
-//		cfg.Region = endpoints.UsWest2RegionID
-//	}
-//
-//	return cfg, err
-//}
-//
-//func GetService(cfg aws.Config, serviceName string) {
-//	svc := ecs.New(cfg)
-//	input := &ecs.DescribeServicesInput{
-//		Services: []string{
-//			serviceName,
-//		},
-//	}
-//}
+import (
+	"sync"
+	"time"
+	"net"
+)
+
+type (
+	Container struct {
+		sync.RWMutex
+		ExternalID            string
+		StartTime             time.Time
+		IPAddress             string
+		Port                  int
+		IsReady               bool
+		ConnectionFromClient  net.Conn
+		ConnectionToContainer net.Conn
+	}
+)

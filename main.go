@@ -1,16 +1,17 @@
 package main
 
 import (
-	"github.com/nextmetaphor/tcp-proxy-pool/controller"
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
+	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
+	"github.com/nextmetaphor/tcp-proxy-pool/controller"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"os"
 )
 
 const (
 	// command-line flags
-	logSignalReceived = "Signal [%s] received, shutting down server"
-	settingsFilename = "tcp-proxy-pool.json"
+	logSignalReceived           = "Signal [%s] received, shutting down server"
+	settingsFilename            = "tcp-proxy-pool.json"
 	logErrorLoadingSettingsFile = "Error loading settings file"
 )
 
@@ -38,7 +39,11 @@ func main() {
 	// start the monitoring service
 	go ctx.StartMonitor()
 
+	// create the container manager
+	//cm := container_manager.ECS{}
+	cm := container_manager.DummyContainerManager{}
+
 	// start a listener
-	ctx.StartListener()
+	ctx.StartListener(cm)
 
 }

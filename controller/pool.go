@@ -2,11 +2,11 @@ package controller
 
 import (
 	"net"
-	"time"
 	"errors"
-	"sync"
 	"strconv"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
+	"github.com/nextmetaphor/tcp-proxy-pool/container"
+	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
 )
 
 const (
@@ -22,28 +22,12 @@ const (
 )
 
 type (
-	Container struct {
-		sync.RWMutex
-		ExternalID            string
-		StartTime             time.Time
-		IPAddress             string
-		Port                  int
-		IsReady               bool
-		ConnectionFromClient  net.Conn
-		ConnectionToContainer net.Conn
-	}
 
-	ContainerPool map[string]*Container
-
-	// TODO - need to return errors on both methods
-	ContainerManager interface {
-		CreateContainer() (*Container, error)
-		DestroyContainer(externalID string) (error)
-	}
+	ContainerPool map[string]*container.Container
 )
 
 // InitialiseContainerPool creates a connection pool
-func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
+func (ctx *Context) InitialiseContainerPool(cm container_manager.ContainerManager) {
 	pool := make(ContainerPool)
 	ctx.ContainerPool = &pool
 
@@ -61,7 +45,7 @@ func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
 // created container.
-func CreateContainer(pool *ContainerPool, cm ContainerManager) (c *Container, err error) {
+func CreateContainer(pool *ContainerPool, cm container_manager.ContainerManager) (c *container.Container, err error) {
 	if pool == nil {
 		return c, errors.New(errorContainerPoolNilCannotCreate)
 	}
@@ -79,7 +63,7 @@ func CreateContainer(pool *ContainerPool, cm ContainerManager) (c *Container, er
 	return c, nil
 }
 
-func DestroyContainer(containerID string, pool *ContainerPool, cm ContainerManager) (err error) {
+func DestroyContainer(containerID string, pool *ContainerPool, cm container_manager.ContainerManager) (err error) {
 	if pool == nil {
 		return errors.New(errorContainerPoolNilCannotDestroy)
 	}
@@ -89,7 +73,7 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm ContainerManag
 	return nil
 }
 
-func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*Container, error) {
+func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*container.Container, error) {
 	// TODO - would it be better to lock the whole pool?
 	for _, container := range *ctx.ContainerPool {
 		// find the first container with no current connection from the client
@@ -109,7 +93,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*Container, err
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func (ctx *Context) DissociateClientWithContainer(c *Container) {
+func (ctx *Context) DissociateClientWithContainer(c *container.Container) {
 	if c == nil {
 		ctx.Logger.Warnf(logNilContainerToDisassociate)
 		return
@@ -121,7 +105,7 @@ func (ctx *Context) DissociateClientWithContainer(c *Container) {
 	c.ConnectionFromClient = nil
 }
 
-func (ctx *Context) ConnectClientToContainer(c *Container) (error) {
+func (ctx *Context) ConnectClientToContainer(c *container.Container) (error) {
 	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
 	if err != nil {
 		return err

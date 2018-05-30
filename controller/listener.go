@@ -5,6 +5,8 @@ import (
 	"io"
 	"crypto/tls"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
+	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
+	"github.com/nextmetaphor/tcp-proxy-pool/container"
 )
 
 const (
@@ -21,8 +23,8 @@ const (
 	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 )
 
-func (ctx *Context) StartListener() bool {
-	ctx.InitialiseContainerPool(ECSContainerManager{})
+func (ctx *Context) StartListener(cm container_manager.ContainerManager) bool {
+	ctx.InitialiseContainerPool(cm)
 
 	monitorClient := ctx.CreateMonitor()
 	if monitorClient != nil {
@@ -34,7 +36,6 @@ func (ctx *Context) StartListener() bool {
 		ctx.Settings.Listener.Port,
 		ctx.Settings.Listener.CertFile,
 		ctx.Settings.Listener.KeyFile)
-
 
 	tcpProtocol := ctx.Settings.Listener.Transport
 	tcpIP := ctx.Settings.Listener.Host
@@ -85,6 +86,10 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 // clientConnect is called in a separate goroutine for every successful Accept request on the server listener.
 func (ctx *Context) clientConnect(serverConn net.Conn) {
 	c, err := ctx.AssociateClientWithContainer(serverConn)
+	if c != nil {
+		defer ctx.DissociateClientWithContainer(c)
+	}
+
 	if err != nil {
 		ctx.Logger.Warn(logErrorAssigningContainer, err)
 		// TODO - check for errors
@@ -100,7 +105,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 	ctx.proxy(c)
 }
 
-func (ctx *Context) proxy(c *Container) {
+func (ctx *Context) proxy(c *container.Container) {
 	server := c.ConnectionFromClient
 	client := c.ConnectionToContainer
 
@@ -137,8 +142,6 @@ func (ctx *Context) proxy(c *Container) {
 	}
 
 	<-waitChannel
-
-	ctx.DissociateClientWithContainer(c)
 }
 
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {

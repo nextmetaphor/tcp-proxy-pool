@@ -30,9 +30,16 @@
     "aws/awsutil",
     "aws/client",
     "aws/client/metadata",
+    "aws/corehandlers",
     "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/stscreds",
+    "aws/defaults",
+    "aws/ec2metadata",
     "aws/endpoints",
     "aws/request",
+    "aws/session",
     "aws/signer/v4",
     "internal/sdkio",
     "internal/sdkrand",
@@ -40,8 +47,12 @@
     "private/protocol",
     "private/protocol/json/jsonutil",
     "private/protocol/jsonrpc",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
     "private/protocol/rest",
-    "service/ecs"
+    "private/protocol/xml/xmlutil",
+    "service/ecs",
+    "service/sts"
   ]
   revision = "398d14696895d68a3409bb3ccb1cfe8abc2d4376"
   version = "v1.13.57"
@@ -127,6 +138,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d67caaad1e89dd791a4e770de63ea0e43e03152aa550fd1d21ceffbd4169a002"
+  inputs-digest = "8f70fb07140309d15b9d1fc967ec324ea547ba655a6ec9f77a0d314a0d0ce627"
   solver-name = "gps-cdcl"
   solver-version = 1
