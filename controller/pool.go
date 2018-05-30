@@ -37,8 +37,8 @@ type (
 
 	// TODO - need to return errors on both methods
 	ContainerManager interface {
-		CreateContainer() *Container
-		DestroyContainer(externalID string)
+		CreateContainer() (*Container, error)
+		DestroyContainer(externalID string) (error)
 	}
 )
 
@@ -47,8 +47,7 @@ func (ctx *Context) InitialiseContainerPool(cm ContainerManager) {
 	pool := make(ContainerPool)
 	ctx.ContainerPool = &pool
 
-	// TODO - this needs to be a configuration parameter
-	poolSize := 10
+	poolSize := ctx.Settings.Pool.InitialSize
 
 	for i := 0; i < poolSize; i++ {
 		c, err := CreateContainer(ctx.ContainerPool, cm)
@@ -67,11 +66,14 @@ func CreateContainer(pool *ContainerPool, cm ContainerManager) (c *Container, er
 		return c, errors.New(errorContainerPoolNilCannotCreate)
 	}
 
-	c = cm.CreateContainer()
-	if c == nil {
-		return c, errors.New(errorCreatedContainerCannotBeNil)
+	c, err = cm.CreateContainer()
+	if err != nil {
+		return c, err
 	}
 
+	if (c == nil) {
+		return c, errors.New(errorCreatedContainerCannotBeNil)
+	}
 	(*pool)[c.ExternalID] = c
 
 	return c, nil

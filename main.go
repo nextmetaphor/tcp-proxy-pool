@@ -5,7 +5,6 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"os"
-	"github.com/nextmetaphor/tcp-proxy-pool/configuration"
 )
 
 const (
@@ -25,10 +24,9 @@ func main() {
 	// create the main context with the logger and flags
 	ctx := controller.Context{
 		Logger: log.Get(*flags[application.LogLevelFlag].FlagValue),
-		//Flags:  &flags,
 	}
 
-	settings, err := configuration.LoadSettings(settingsFilename)
+	settings, err := application.LoadSettings(settingsFilename)
 	if err != nil {
 		log.LogError(logErrorLoadingSettingsFile, err, ctx.Logger)
 	} else {

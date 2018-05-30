@@ -1,4 +1,4 @@
-package configuration
+package application
 
 import (
 	"os"
@@ -23,14 +23,23 @@ type (
 		Database string
 	}
 
-	ApplicationSettings struct {
+	ECSSettings struct {
+		Cluster        string
+		TaskDefinition string
+		Subnets        []string
+		SecurityGroups []string
+		AssignPublicIP string
+	}
+
+	Settings struct {
 		Listener ListenerSettings
 		Pool     PoolSettings
 		Monitor  MonitorSettings
+		ECS      ECSSettings
 	}
 )
 
-func LoadSettings(file string) (settings *ApplicationSettings, err error) {
+func LoadSettings(file string) (settings *Settings, err error) {
 	config, err := os.Open(file)
 	defer config.Close()
 	if err != nil {

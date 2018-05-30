@@ -25,17 +25,21 @@ var (
 	}
 )
 
-func (tcm TestNilContainerManager) CreateContainer() *Container {
+func (tcm TestNilContainerManager) CreateContainer() (*Container, error) {
+	return nil, nil
+}
+
+func (cm TestNilContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 
-func (cm TestNilContainerManager) DestroyContainer(externalID string) {}
-
-func (tcm TestContainerManager) CreateContainer() *Container {
-	return testContainer42
+func (tcm TestContainerManager) CreateContainer() (*Container, error) {
+	return testContainer42, nil
 }
 
-func (tcm TestContainerManager) DestroyContainer(externalID string) {}
+func (tcm TestContainerManager) DestroyContainer(externalID string) (error) {
+	return nil
+}
 
 
 func Test_CreateContainer(t *testing.T) {
