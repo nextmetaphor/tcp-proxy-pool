@@ -5,8 +5,8 @@ import (
 	"io"
 	"crypto/tls"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
-	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
-	"github.com/nextmetaphor/tcp-proxy-pool/container"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 )
 
-func (ctx *Context) StartListener(cm container_manager.ContainerManager) bool {
+func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	ctx.InitialiseContainerPool(cm)
 
 	monitorClient := ctx.CreateMonitor()
@@ -105,7 +105,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 	ctx.proxy(c)
 }
 
-func (ctx *Context) proxy(c *container.Container) {
+func (ctx *Context) proxy(c *cntr.Container) {
 	server := c.ConnectionFromClient
 	client := c.ConnectionToContainer
 

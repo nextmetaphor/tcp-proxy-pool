@@ -1,4 +1,4 @@
-package container_manager
+package cntrmgr
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/sirupsen/logrus"
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
-	"github.com/nextmetaphor/tcp-proxy-pool/container"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 )
 
 const (
@@ -26,8 +26,9 @@ const (
 
 type (
 	ECS struct {
-		logger logrus.Logger
-		conf application.ECSSettings
+		Logger     logrus.Logger
+		Conf       application.ECSSettings
+		ECSService *ecs.ECS
 	}
 )
 
@@ -39,57 +40,60 @@ func strArrToStrPointerArr(strArr []string) []*string {
 	return ps
 }
 
-func (cm ECS) CreateContainer() (*container.Container, error) {
-	config := &aws.Config{Region: aws.String(cm.conf.Region)}
-	if cm.conf.Profile != "" {
-		config.Credentials = credentials.NewSharedCredentials("", cm.conf.Profile)
+func (cm ECS) InitialiseECSService() (error) {
+	config := &aws.Config{Region: aws.String(cm.Conf.Region)}
+	if cm.Conf.Profile != "" {
+		config.Credentials = credentials.NewSharedCredentials("", cm.Conf.Profile)
 	}
 	session, err := session.NewSession(config)
-
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ecsService := ecs.New(session)
+	cm.ECSService = ecs.New(session)
+	return nil
+}
+
+func (cm ECS) CreateContainer() (*cntr.Container, error) {
 	runTaskInput := &ecs.RunTaskInput{
-		Cluster:        aws.String(cm.conf.Cluster),
-		TaskDefinition: aws.String(cm.conf.TaskDefinition),
+		Cluster:        aws.String(cm.Conf.Cluster),
+		TaskDefinition: aws.String(cm.Conf.TaskDefinition),
 		Count:          aws.Int64(1),
-		LaunchType:     aws.String(cm.conf.LaunchType),
+		LaunchType:     aws.String(cm.Conf.LaunchType),
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				AssignPublicIp: aws.String(cm.conf.AssignPublicIP),
-				SecurityGroups: strArrToStrPointerArr(cm.conf.SecurityGroups),
-				Subnets:        strArrToStrPointerArr(cm.conf.Subnets),
+				AssignPublicIp: aws.String(cm.Conf.AssignPublicIP),
+				SecurityGroups: strArrToStrPointerArr(cm.Conf.SecurityGroups),
+				Subnets:        strArrToStrPointerArr(cm.Conf.Subnets),
 			},
 		},
 	}
 
-	runTaskOutput, err := ecsService.RunTask(runTaskInput)
+	runTaskOutput, err := cm.ECSService.RunTask(runTaskInput)
 	if err != nil {
 		if err, ok := err.(awserr.Error); ok {
 			switch err.Code() {
 			case ecs.ErrCodeServerException:
-				log.LogError(ecs.ErrCodeServerException, err, &cm.logger)
+				log.LogError(ecs.ErrCodeServerException, err, &cm.Logger)
 			case ecs.ErrCodeClientException:
-				log.LogError(ecs.ErrCodeClientException, err, &cm.logger)
+				log.LogError(ecs.ErrCodeClientException, err, &cm.Logger)
 			case ecs.ErrCodeInvalidParameterException:
-				log.LogError(ecs.ErrCodeInvalidParameterException, err, &cm.logger)
+				log.LogError(ecs.ErrCodeInvalidParameterException, err, &cm.Logger)
 			case ecs.ErrCodeClusterNotFoundException:
-				log.LogError(ecs.ErrCodeClusterNotFoundException, err, &cm.logger)
+				log.LogError(ecs.ErrCodeClusterNotFoundException, err, &cm.Logger)
 			default:
-				log.LogError(logAWSErrorOccurred, err, &cm.logger)
+				log.LogError(logAWSErrorOccurred, err, &cm.Logger)
 			}
 		} else {
-			log.LogError(logNonAWSErrorOccurred, err, &cm.logger)
+			log.LogError(logNonAWSErrorOccurred, err, &cm.Logger)
 		}
 		return nil, err
 	}
 
-	cm.logger.Info(logWaitingForTaskNetworkInterfaceToAttach, cm.conf.MaximumContainerStartTimeSec, *runTaskOutput.Tasks[0].TaskArn)
-	cm.logger.Debug(logRunTaskOutput, runTaskOutput)
+	cm.Logger.Info(logWaitingForTaskNetworkInterfaceToAttach, cm.Conf.MaximumContainerStartTimeSec, *runTaskOutput.Tasks[0].TaskArn)
+	cm.Logger.Debug(logRunTaskOutput, runTaskOutput)
 
-	maximumStartTimeSec := cm.conf.MaximumContainerStartTimeSec
+	maximumStartTimeSec := cm.Conf.MaximumContainerStartTimeSec
 	if maximumStartTimeSec <= 0 {
 		maximumStartTimeSec = maximumContainerStartTimeSecDefault
 	}
@@ -98,7 +102,7 @@ func (cm ECS) CreateContainer() (*container.Container, error) {
 	var describeTasksOutput *ecs.DescribeTasksOutput
 	for i := 0; i < maximumStartTimeSec; i++ {
 		time.Sleep(1 * time.Second)
-		describeTasksOutput, err = ecsService.DescribeTasks(&ecs.DescribeTasksInput{
+		describeTasksOutput, err = cm.ECSService.DescribeTasks(&ecs.DescribeTasksInput{
 			Tasks:   []*string{runTaskOutput.Tasks[0].TaskArn},
 			Cluster: runTaskInput.Cluster,
 		})
@@ -106,8 +110,8 @@ func (cm ECS) CreateContainer() (*container.Container, error) {
 			return nil, err
 		}
 
-		cm.logger.Info(logTaskNetworkInterfaceStatus, *runTaskOutput.Tasks[0].TaskArn, *describeTasksOutput.Tasks[0].Attachments[0].Status)
-		cm.logger.Debug(logDescribeTaskOutput, describeTasksOutput.Tasks[0])
+		cm.Logger.Info(logTaskNetworkInterfaceStatus, *runTaskOutput.Tasks[0].TaskArn, *describeTasksOutput.Tasks[0].Attachments[0].Status)
+		cm.Logger.Debug(logDescribeTaskOutput, describeTasksOutput.Tasks[0])
 
 		fmt.Println(*describeTasksOutput.Tasks[0].Attachments[0].Status)
 		if *describeTasksOutput.Tasks[0].Attachments[0].Status == "ATTACHED" {
@@ -115,7 +119,7 @@ func (cm ECS) CreateContainer() (*container.Container, error) {
 		}
 	}
 
-	return &container.Container{
+	return &cntr.Container{
 		ExternalID: *runTaskOutput.Tasks[0].TaskArn,
 		StartTime:  *runTaskOutput.Tasks[0].CreatedAt,
 		IPAddress:  *describeTasksOutput.Tasks[0].Containers[0].NetworkInterfaces[0].PrivateIpv4Address,

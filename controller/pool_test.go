@@ -3,7 +3,7 @@ package controller
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
-	"github.com/nextmetaphor/tcp-proxy-pool/container"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 )
 
 type (
@@ -13,20 +13,20 @@ type (
 )
 
 var (
-	testContainer1 = &container.Container{
+	testContainer1 = &cntr.Container{
 		ExternalID: "1",
 	}
 
-	testContainer2 = &container.Container{
+	testContainer2 = &cntr.Container{
 		ExternalID: "2",
 	}
 
-	testContainer42 = &container.Container{
+	testContainer42 = &cntr.Container{
 		ExternalID: "42",
 	}
 )
 
-func (tcm TestNilContainerManager) CreateContainer() (*container.Container, error) {
+func (tcm TestNilContainerManager) CreateContainer() (*cntr.Container, error) {
 	return nil, nil
 }
 
@@ -34,7 +34,7 @@ func (cm TestNilContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 
-func (tcm TestContainerManager) CreateContainer() (*container.Container, error) {
+func (tcm TestContainerManager) CreateContainer() (*cntr.Container, error) {
 	return testContainer42, nil
 }
 

@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
-	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
 	"github.com/nextmetaphor/tcp-proxy-pool/controller"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"os"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 )
 
 const (
@@ -40,8 +40,13 @@ func main() {
 	go ctx.StartMonitor()
 
 	// create the container manager
-	//cm := container_manager.ECS{}
-	cm := container_manager.DummyContainerManager{}
+	cm := cntrmgr.ECS{
+		Logger: *ctx.Logger,
+		Conf: ctx.Settings.ECS,
+	}
+	cm.InitialiseECSService()
+
+	//cm := container_manager.DummyContainerManager{}
 
 	// start a listener
 	ctx.StartListener(cm)

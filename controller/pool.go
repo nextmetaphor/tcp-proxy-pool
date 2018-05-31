@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strconv"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
-	"github.com/nextmetaphor/tcp-proxy-pool/container"
-	"github.com/nextmetaphor/tcp-proxy-pool/container-manager"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 )
 
 const (
@@ -23,16 +23,17 @@ const (
 
 type (
 
-	ContainerPool map[string]*container.Container
+	ContainerPool map[string]*cntr.Container
 )
 
 // InitialiseContainerPool creates a connection pool
-func (ctx *Context) InitialiseContainerPool(cm container_manager.ContainerManager) {
+func (ctx *Context) InitialiseContainerPool(cm cntrmgr.ContainerManager) {
 	pool := make(ContainerPool)
 	ctx.ContainerPool = &pool
 
 	poolSize := ctx.Settings.Pool.InitialSize
 
+	// TODO create containers in parallel? this could take a while...
 	for i := 0; i < poolSize; i++ {
 		c, err := CreateContainer(ctx.ContainerPool, cm)
 		if err != nil {
@@ -45,7 +46,7 @@ func (ctx *Context) InitialiseContainerPool(cm container_manager.ContainerManage
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
 // created container.
-func CreateContainer(pool *ContainerPool, cm container_manager.ContainerManager) (c *container.Container, err error) {
+func CreateContainer(pool *ContainerPool, cm cntrmgr.ContainerManager) (c *cntr.Container, err error) {
 	if pool == nil {
 		return c, errors.New(errorContainerPoolNilCannotCreate)
 	}
@@ -63,7 +64,7 @@ func CreateContainer(pool *ContainerPool, cm container_manager.ContainerManager)
 	return c, nil
 }
 
-func DestroyContainer(containerID string, pool *ContainerPool, cm container_manager.ContainerManager) (err error) {
+func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.ContainerManager) (err error) {
 	if pool == nil {
 		return errors.New(errorContainerPoolNilCannotDestroy)
 	}
@@ -73,7 +74,7 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm container_mana
 	return nil
 }
 
-func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*container.Container, error) {
+func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
 	// TODO - would it be better to lock the whole pool?
 	for _, container := range *ctx.ContainerPool {
 		// find the first container with no current connection from the client
@@ -93,7 +94,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*container.Cont
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func (ctx *Context) DissociateClientWithContainer(c *container.Container) {
+func (ctx *Context) DissociateClientWithContainer(c *cntr.Container) {
 	if c == nil {
 		ctx.Logger.Warnf(logNilContainerToDisassociate)
 		return
@@ -105,7 +106,7 @@ func (ctx *Context) DissociateClientWithContainer(c *container.Container) {
 	c.ConnectionFromClient = nil
 }
 
-func (ctx *Context) ConnectClientToContainer(c *container.Container) (error) {
+func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {
 	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
 	if err != nil {
 		return err
