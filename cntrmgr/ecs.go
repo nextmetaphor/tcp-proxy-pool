@@ -1,7 +1,6 @@
 package cntrmgr
 
 import (
-	"fmt"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,7 +18,7 @@ const (
 	logAWSErrorOccurred                       = "AWS error occurred"
 	logNonAWSErrorOccurred                    = "Non-AWS error occurred"
 	logRunTaskOutput                          = "RunTask output"
-	logWaitingForTaskNetworkInterfaceToAttach = "Waiting for task [%s] network interface to attach, timing out in [%n] second(s)"
+	logWaitingForTaskNetworkInterfaceToAttach = "Waiting for task [%s] network interface to attach, timing out in [%d] second(s)"
 	logDescribeTaskOutput                     = "DescribeTask output"
 	logTaskNetworkInterfaceStatus             = "Task [%s] network interface in state [%s]"
 )
@@ -34,13 +33,13 @@ type (
 
 func strArrToStrPointerArr(strArr []string) []*string {
 	ps := make([]*string, len(strArr))
-	for i, s := range strArr {
-		*ps[i] = s
+	for i:= 0; i<len(strArr); i++ {
+		ps[i] = &strArr[i]
 	}
 	return ps
 }
 
-func (cm ECS) InitialiseECSService() (error) {
+func (cm *ECS) InitialiseECSService() (error) {
 	config := &aws.Config{Region: aws.String(cm.Conf.Region)}
 	if cm.Conf.Profile != "" {
 		config.Credentials = credentials.NewSharedCredentials("", cm.Conf.Profile)
@@ -90,7 +89,7 @@ func (cm ECS) CreateContainer() (*cntr.Container, error) {
 		return nil, err
 	}
 
-	cm.Logger.Info(logWaitingForTaskNetworkInterfaceToAttach, cm.Conf.MaximumContainerStartTimeSec, *runTaskOutput.Tasks[0].TaskArn)
+	cm.Logger.Infof(logWaitingForTaskNetworkInterfaceToAttach, *runTaskOutput.Tasks[0].TaskArn, cm.Conf.MaximumContainerStartTimeSec)
 	cm.Logger.Debug(logRunTaskOutput, runTaskOutput)
 
 	maximumStartTimeSec := cm.Conf.MaximumContainerStartTimeSec
@@ -110,10 +109,9 @@ func (cm ECS) CreateContainer() (*cntr.Container, error) {
 			return nil, err
 		}
 
-		cm.Logger.Info(logTaskNetworkInterfaceStatus, *runTaskOutput.Tasks[0].TaskArn, *describeTasksOutput.Tasks[0].Attachments[0].Status)
+		cm.Logger.Infof(logTaskNetworkInterfaceStatus, *runTaskOutput.Tasks[0].TaskArn, *describeTasksOutput.Tasks[0].Attachments[0].Status)
 		cm.Logger.Debug(logDescribeTaskOutput, describeTasksOutput.Tasks[0])
 
-		fmt.Println(*describeTasksOutput.Tasks[0].Attachments[0].Status)
 		if *describeTasksOutput.Tasks[0].Attachments[0].Status == "ATTACHED" {
 			break
 		}
