@@ -16,8 +16,8 @@ func (cm DummyContainerManager) CreateContainer() (*cntr.Container, error) {
 	return &cntr.Container{
 		ExternalID: strconv.Itoa(rand.Int()),
 		StartTime:  time.Now(),
-		IPAddress:  "192.168.64.26",
-		Port:       32583,
+		IPAddress:  "192.168.64.30",
+		Port:       32523,
 	}, nil
 }
 

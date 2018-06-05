@@ -5,6 +5,7 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/controller"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"os"
+	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 )
 
@@ -29,24 +30,30 @@ func main() {
 
 	settings, err := application.LoadSettings(settingsFilename)
 	if err != nil {
-		log.LogError(logErrorLoadingSettingsFile, err, ctx.Logger)
+		log.Error(logErrorLoadingSettingsFile, err, ctx.Logger)
 	} else {
 		ctx.Settings = *settings
 	}
 
 	// TODO overrride settings with flags
 
-	// start the monitoring service
-	go ctx.StartMonitor()
+	// start the monitor service
+	ctx.MonitorClient = monitor.MonitorClient{
+		Logger:   *ctx.Logger,
+		Settings: ctx.Settings.Monitor,
+	}
+
+	// start the statistics service
+	go ctx.StartStatistics()
 
 	// create the container manager
-	cm := cntrmgr.ECS{
-		Logger: *ctx.Logger,
-		Conf: ctx.Settings.ECS,
-	}
-	cm.InitialiseECSService()
+	//cm := cntrmgr.ECS{
+	//	Logger: *ctx.Logger,
+	//	Conf:   ctx.Settings.ECS,
+	//}
+	//cm.InitialiseECSService()
 
-	//cm := container_manager.DummyContainerManager{}
+	cm := cntrmgr.DummyContainerManager{}
 
 	// start a listener
 	ctx.StartListener(cm)

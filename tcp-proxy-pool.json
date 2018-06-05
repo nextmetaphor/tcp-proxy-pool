@@ -10,7 +10,7 @@
     "InitialSize": 2
   },
   "Monitor": {
-    "Address": "192.168.64.26:30102",
+    "Address": "192.168.64.30:30102",
     "Database": "tcp-proxy-pool"
   }
 }

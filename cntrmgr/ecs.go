@@ -73,18 +73,18 @@ func (cm ECS) CreateContainer() (*cntr.Container, error) {
 		if err, ok := err.(awserr.Error); ok {
 			switch err.Code() {
 			case ecs.ErrCodeServerException:
-				log.LogError(ecs.ErrCodeServerException, err, &cm.Logger)
+				log.Error(ecs.ErrCodeServerException, err, &cm.Logger)
 			case ecs.ErrCodeClientException:
-				log.LogError(ecs.ErrCodeClientException, err, &cm.Logger)
+				log.Error(ecs.ErrCodeClientException, err, &cm.Logger)
 			case ecs.ErrCodeInvalidParameterException:
-				log.LogError(ecs.ErrCodeInvalidParameterException, err, &cm.Logger)
+				log.Error(ecs.ErrCodeInvalidParameterException, err, &cm.Logger)
 			case ecs.ErrCodeClusterNotFoundException:
-				log.LogError(ecs.ErrCodeClusterNotFoundException, err, &cm.Logger)
+				log.Error(ecs.ErrCodeClusterNotFoundException, err, &cm.Logger)
 			default:
-				log.LogError(logAWSErrorOccurred, err, &cm.Logger)
+				log.Error(logAWSErrorOccurred, err, &cm.Logger)
 			}
 		} else {
-			log.LogError(logNonAWSErrorOccurred, err, &cm.Logger)
+			log.Error(logNonAWSErrorOccurred, err, &cm.Logger)
 		}
 		return nil, err
 	}

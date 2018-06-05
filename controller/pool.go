@@ -22,13 +22,21 @@ const (
 )
 
 type (
+	ContainerPool struct {
+		// TotalContainersInPool can be calculated from Containers but included here for speed purposes
+		TotalContainersInPool int
+		// TotalContainersInUse can be calculated from Containers but included here for speed purposes
+		TotalContainersInUse int
 
-	ContainerPool map[string]*cntr.Container
+		Containers map[string]*cntr.Container
+	}
 )
 
 // InitialiseContainerPool creates a connection pool
 func (ctx *Context) InitialiseContainerPool(cm cntrmgr.ContainerManager) {
-	pool := make(ContainerPool)
+	pool := ContainerPool{
+		Containers: make(map[string]*cntr.Container),
+	}
 	ctx.ContainerPool = &pool
 
 	poolSize := ctx.Settings.Pool.InitialSize
@@ -37,7 +45,7 @@ func (ctx *Context) InitialiseContainerPool(cm cntrmgr.ContainerManager) {
 	for i := 0; i < poolSize; i++ {
 		c, err := CreateContainer(ctx.ContainerPool, cm)
 		if err != nil {
-			log.LogError(logErrorCreatingContainer, err, ctx.Logger)
+			log.Error(logErrorCreatingContainer, err, ctx.Logger)
 			break
 		}
 		ctx.Logger.Infof(logCreatedContainer, c.ExternalID)
@@ -53,13 +61,15 @@ func CreateContainer(pool *ContainerPool, cm cntrmgr.ContainerManager) (c *cntr.
 
 	c, err = cm.CreateContainer()
 	if err != nil {
+		// TODO - add monitoring here
 		return c, err
 	}
 
 	if (c == nil) {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
-	(*pool)[c.ExternalID] = c
+	pool.Containers[c.ExternalID] = c
+	pool.TotalContainersInPool++
 
 	return c, nil
 }
@@ -70,19 +80,27 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.Contai
 	}
 
 	cm.DestroyContainer(containerID)
-	delete((*pool), containerID)
+	delete(pool.Containers, containerID)
+	pool.TotalContainersInPool--
+
+	// TODO - add monitoring here
 	return nil
 }
 
 func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
 	// TODO - would it be better to lock the whole pool?
-	for _, container := range *ctx.ContainerPool {
+	for _, container := range ctx.ContainerPool.Containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionToContainer == nil {
 			container.Lock()
 			if container.ConnectionFromClient == nil {
 				container.ConnectionFromClient = conn
+				ctx.ContainerPool.TotalContainersInUse++
 				container.Unlock()
+
+				ctx.MonitorClient.WriteConnectionAccepted(conn)
+
+
 				return container, nil
 			}
 
@@ -91,6 +109,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container
 		}
 	}
 
+	ctx.MonitorClient.WriteConnectionRejected(conn)
 	return nil, errors.New(errorContainerPoolFull)
 }
 
@@ -104,6 +123,7 @@ func (ctx *Context) DissociateClientWithContainer(c *cntr.Container) {
 	defer c.Unlock()
 	c.ConnectionToContainer = nil
 	c.ConnectionFromClient = nil
+	ctx.ContainerPool.TotalContainersInUse--
 }
 
 func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {

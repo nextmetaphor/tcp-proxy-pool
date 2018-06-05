@@ -20,13 +20,12 @@ const (
 	logErrorClientConnNotTCP          = "Error: client connection not TCP"
 	logErrorAssigningContainer        = "Error: cannot assign container"
 	logErrorProxyingConnection        = "Error proxying connection"
-	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	ctx.InitialiseContainerPool(cm)
 
-	monitorClient := ctx.CreateMonitor()
+	monitorClient := ctx.MonitorClient.CreateMonitor()
 	if monitorClient != nil {
 		defer (*monitorClient).Close()
 	}
@@ -43,7 +42,7 @@ func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 
 	cert, err := tls.LoadX509KeyPair(ctx.Settings.Listener.CertFile, ctx.Settings.Listener.KeyFile)
 	if err != nil {
-		log.LogError(logErrorLoadingCertificates, err, ctx.Logger)
+		log.Error(logErrorLoadingCertificates, err, ctx.Logger)
 		return false
 	}
 
@@ -54,7 +53,7 @@ func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	}
 
 	if listenErr != nil {
-		log.LogError(logErrorCreatingListener, err, ctx.Logger)
+		log.Error(logErrorCreatingListener, err, ctx.Logger)
 		return false
 	}
 
@@ -69,15 +68,9 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.LogError(logErrorAcceptingConnection, err, ctx.Logger)
+			log.Error(logErrorAcceptingConnection, err, ctx.Logger)
 			return
 		}
-
-		// TODO - add hostname
-		go ctx.WritePoint(
-			"connections",
-			map[string]string{"listen-requests": "request-count"},
-			map[string]interface{}{"request-count": 1})
 
 		go ctx.clientConnect(conn)
 	}
@@ -98,7 +91,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 	}
 
 	if err := ctx.ConnectClientToContainer(c); err != nil {
-		log.LogError(logErrorProxyingConnection, err, ctx.Logger)
+		log.Error(logErrorProxyingConnection, err, ctx.Logger)
 		return
 	}
 
@@ -147,23 +140,13 @@ func (ctx *Context) proxy(c *cntr.Container) {
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
 	bytesCopied, err := io.Copy(dst, src);
 	if err != nil {
-		log.LogError(logErrorCopying, err, ctx.Logger)
+		log.Error(logErrorCopying, err, ctx.Logger)
 	}
 
-	if srcIsServer {
-		go ctx.WritePoint(
-			"connections",
-			map[string]string{"bytes-copied": "total"},
-			map[string]interface{}{"bytesCopiedFromClient": bytesCopied})
-	} else {
-		go ctx.WritePoint(
-			"connections",
-			map[string]string{"bytes-copied": "total"},
-			map[string]interface{}{"bytesCopiedFromServer": bytesCopied})
-	}
+	ctx.MonitorClient.WriteBytesCopied(srcIsServer, bytesCopied, dst, src)
 
 	if err := src.Close(); err != nil {
-		log.LogError(logErrorClosing, err, ctx.Logger)
+		log.Error(logErrorClosing, err, ctx.Logger)
 	}
 
 	sourceClosedChannel <- struct{}{}

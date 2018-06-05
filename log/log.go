@@ -34,7 +34,7 @@ func Get(level string) *logrus.Logger {
 	return logger
 }
 
-func LogError(description string, err error, logger *logrus.Logger) {
+func Error(description string, err error, logger *logrus.Logger) {
 	if logger != nil {
 		logger.WithFields(logrus.Fields{
 			logFieldErrorCause: err}).Error(description)

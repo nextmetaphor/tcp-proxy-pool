@@ -53,59 +53,67 @@ func Test_CreateContainer(t *testing.T) {
 	})
 
 	t.Run("EmptyPool", func(t *testing.T) {
-		pool := make(ContainerPool, 0)
+		pool := ContainerPool{
+			Containers: make(map[string]*cntr.Container),
+		}
 		c, err := CreateContainer(&pool, tcm)
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 1, len(pool), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 1, len(pool.Containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolNewContainer", func(t *testing.T) {
-		pool := make(ContainerPool, 0)
-		pool[testContainer1.ExternalID] = testContainer1
-		pool[testContainer2.ExternalID] = testContainer2
+		pool := ContainerPool{
+			Containers: make(map[string]*cntr.Container),
+		}
+		pool.Containers[testContainer1.ExternalID] = testContainer1
+		pool.Containers[testContainer2.ExternalID] = testContainer2
 
 		c, err := CreateContainer(&pool, tcm)
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 3, len(pool), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(pool.Containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool.Containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool.Containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolExistingContainer", func(t *testing.T) {
-		pool := make(ContainerPool, 0)
-		pool[testContainer1.ExternalID] = testContainer1
-		pool[testContainer2.ExternalID] = testContainer2
-		pool[testContainer42.ExternalID] = testContainer42
+		pool := ContainerPool{
+			Containers: make(map[string]*cntr.Container),
+		}
+		pool.Containers[testContainer1.ExternalID] = testContainer1
+		pool.Containers[testContainer2.ExternalID] = testContainer2
+		pool.Containers[testContainer42.ExternalID] = testContainer42
 
 		c, err := CreateContainer(&pool, tcm)
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 3, len(pool), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(pool.Containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool.Containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool.Containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolNilContainer", func(t *testing.T) {
-		pool := make(ContainerPool, 0)
-		pool[testContainer1.ExternalID] = testContainer1
-		pool[testContainer2.ExternalID] = testContainer2
-		pool[testContainer42.ExternalID] = testContainer42
+		pool := ContainerPool{
+			Containers: make(map[string]*cntr.Container),
+		}
+		pool.Containers[testContainer1.ExternalID] = testContainer1
+		pool.Containers[testContainer2.ExternalID] = testContainer2
+		pool.Containers[testContainer42.ExternalID] = testContainer42
 
 		c, err := CreateContainer(&pool, TestNilContainerManager{})
 
 		assert.NotNil(t, err, "error expected")
 		assert.Nil(t, c, "nil container expected")
-		assert.Equal(t, 3, len(pool), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, pool[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, pool[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(pool.Containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool.Containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool.Containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 }
 

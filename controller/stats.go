@@ -16,23 +16,23 @@ const (
 	urlMonitor = "/monitor"
 )
 
-func (ctx *Context) StartMonitor() {
+func (ctx *Context) StartStatistics() {
 	r := mux.NewRouter()
 	server := &http.Server{
 		Addr:    "localhost:" + strconv.Itoa(8080),
 		Handler: handlers.LoggingHandler(os.Stdout, r),
 	}
 
-	r.HandleFunc(urlMonitor, ctx.handleMonitorRequest).Methods(http.MethodGet)
+	r.HandleFunc(urlMonitor, ctx.handleStatisticsRequest).Methods(http.MethodGet)
 
 	ctx.Logger.Error(server.ListenAndServe())
 
 }
 
-func (ctx *Context) handleMonitorRequest(writer http.ResponseWriter, request *http.Request) {
+func (ctx *Context) handleStatisticsRequest(writer http.ResponseWriter, request *http.Request) {
 	if ctx.ContainerPool != nil {
 		if err := json.NewEncoder(writer).Encode(ctx.ContainerPool); err != nil {
-			log.LogError(logCannotEncodeConnectionPool, err, ctx.Logger)
+			log.Error(logCannotEncodeConnectionPool, err, ctx.Logger)
 			writer.WriteHeader(http.StatusInternalServerError)
 		}
 	} else {
