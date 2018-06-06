@@ -80,7 +80,7 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 func (ctx *Context) clientConnect(serverConn net.Conn) {
 	c, err := ctx.AssociateClientWithContainer(serverConn)
 	if c != nil {
-		defer ctx.DissociateClientWithContainer(c)
+		defer ctx.DissociateClientWithContainer(serverConn, c)
 	}
 
 	if err != nil {

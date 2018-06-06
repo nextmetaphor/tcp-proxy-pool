@@ -91,14 +91,15 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container
 	// TODO - would it be better to lock the whole pool?
 	for _, container := range ctx.ContainerPool.Containers {
 		// find the first container with no current connection from the client
-		if container.ConnectionToContainer == nil {
+		if container.ConnectionFromClient == nil {
 			container.Lock()
 			if container.ConnectionFromClient == nil {
 				container.ConnectionFromClient = conn
 				ctx.ContainerPool.TotalContainersInUse++
-				container.Unlock()
-
+				ctx.Logger.Info(ctx.ContainerPool.TotalContainersInUse)
 				ctx.MonitorClient.WriteConnectionAccepted(conn)
+				ctx.MonitorClient.WriteConnectionPoolStats(conn, ctx.ContainerPool.TotalContainersInUse, ctx.ContainerPool.TotalContainersInPool)
+				container.Unlock()
 
 
 				return container, nil
@@ -113,7 +114,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func (ctx *Context) DissociateClientWithContainer(c *cntr.Container) {
+func (ctx *Context) DissociateClientWithContainer(serverConn net.Conn, c *cntr.Container) {
 	if c == nil {
 		ctx.Logger.Warnf(logNilContainerToDisassociate)
 		return
@@ -124,6 +125,8 @@ func (ctx *Context) DissociateClientWithContainer(c *cntr.Container) {
 	c.ConnectionToContainer = nil
 	c.ConnectionFromClient = nil
 	ctx.ContainerPool.TotalContainersInUse--
+	ctx.Logger.Info(ctx.ContainerPool.TotalContainersInUse)
+	ctx.MonitorClient.WriteConnectionPoolStats(serverConn, ctx.ContainerPool.TotalContainersInUse, ctx.ContainerPool.TotalContainersInPool)
 }
 
 func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {

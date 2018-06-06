@@ -7,7 +7,7 @@
     "KeyFile": "server.key"
   },
   "Pool": {
-    "InitialSize": 2
+    "InitialSize": 15
   },
   "Monitor": {
     "Address": "192.168.64.30:30102",

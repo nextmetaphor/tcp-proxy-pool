@@ -23,6 +23,8 @@ const (
 	measurementConnectionPool = "connection-pool"
 	fieldConnectionsAccepted  = "connections-accepted"
 	fieldConnectionsRejected  = "connections-rejected"
+	fieldConnectionsInUse     = "connections-in-use"
+	fieldConnectionPoolSize   = "connection-pool-size"
 
 	tagTCPProxyPoolClientConn = "client-conn"
 	tagTCPProxyPoolServerConn = "server-conn"
@@ -124,3 +126,13 @@ func (mon MonitorClient) WriteConnectionRejected(src net.Conn) {
 		map[string]interface{}{fieldConnectionsRejected: 1})
 }
 
+func (mon MonitorClient) WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int) {
+	go mon.writePoint(
+		measurementConnectionPool,
+		map[string]string{
+			tagTCPProxyPoolClientConn: src.LocalAddr().String(),
+			tagTCPProxyPoolServerConn: src.RemoteAddr().String()},
+		map[string]interface{}{
+			fieldConnectionsInUse:   connectionsInUse,
+			fieldConnectionPoolSize: connectionPoolSize})
+}
