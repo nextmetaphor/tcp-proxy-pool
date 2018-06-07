@@ -7,6 +7,7 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
+	"sync"
 )
 
 const (
@@ -23,8 +24,7 @@ const (
 
 type (
 	ContainerPool struct {
-		// TotalContainersInPool can be calculated from Containers but included here for speed purposes
-		TotalContainersInPool int
+		sync.RWMutex
 		// TotalContainersInUse can be calculated from Containers but included here for speed purposes
 		TotalContainersInUse int
 
@@ -68,8 +68,9 @@ func CreateContainer(pool *ContainerPool, cm cntrmgr.ContainerManager) (c *cntr.
 	if (c == nil) {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
+	pool.Lock()
+	defer pool.Unlock()
 	pool.Containers[c.ExternalID] = c
-	pool.TotalContainersInPool++
 
 	return c, nil
 }
@@ -79,28 +80,33 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.Contai
 		return errors.New(errorContainerPoolNilCannotDestroy)
 	}
 
+	// TODO errors?
 	cm.DestroyContainer(containerID)
+
+	pool.Lock()
+	defer pool.Unlock()
 	delete(pool.Containers, containerID)
-	pool.TotalContainersInPool--
 
 	// TODO - add monitoring here
 	return nil
 }
 
 func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
-	// TODO - would it be better to lock the whole pool?
 	for _, container := range ctx.ContainerPool.Containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionFromClient == nil {
 			container.Lock()
 			if container.ConnectionFromClient == nil {
 				container.ConnectionFromClient = conn
-				ctx.ContainerPool.TotalContainersInUse++
-				ctx.Logger.Info(ctx.ContainerPool.TotalContainersInUse)
-				ctx.MonitorClient.WriteConnectionAccepted(conn)
-				ctx.MonitorClient.WriteConnectionPoolStats(conn, ctx.ContainerPool.TotalContainersInUse, ctx.ContainerPool.TotalContainersInPool)
-				container.Unlock()
 
+				ctx.ContainerPool.Lock()
+				ctx.ContainerPool.TotalContainersInUse++
+				ctx.MonitorClient.WriteConnectionPoolStats(conn, ctx.ContainerPool.TotalContainersInUse, len(ctx.ContainerPool.Containers))
+				ctx.ContainerPool.Unlock()
+
+				ctx.MonitorClient.WriteConnectionAccepted(conn)
+
+				container.Unlock()
 
 				return container, nil
 			}
@@ -124,9 +130,11 @@ func (ctx *Context) DissociateClientWithContainer(serverConn net.Conn, c *cntr.C
 	defer c.Unlock()
 	c.ConnectionToContainer = nil
 	c.ConnectionFromClient = nil
+
+	ctx.ContainerPool.Lock()
 	ctx.ContainerPool.TotalContainersInUse--
-	ctx.Logger.Info(ctx.ContainerPool.TotalContainersInUse)
-	ctx.MonitorClient.WriteConnectionPoolStats(serverConn, ctx.ContainerPool.TotalContainersInUse, ctx.ContainerPool.TotalContainersInPool)
+	ctx.MonitorClient.WriteConnectionPoolStats(serverConn, ctx.ContainerPool.TotalContainersInUse, len(ctx.ContainerPool.Containers))
+	ctx.ContainerPool.Unlock()
 }
 
 func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {
@@ -135,8 +143,7 @@ func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {
 		return err
 	}
 
-	c.Lock()
-	defer c.Unlock()
+	// no need to lock here
 	c.ConnectionToContainer = conn
 
 	return nil
