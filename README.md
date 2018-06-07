@@ -1,4 +1,4 @@
-
+![tcp-proxy-pool Grafana Dashboard](tcp-proxy-pool-grafana-dashboard.png "tcp-proxy-pool Grafana Dashboard")
 
 #### Import Dependencies
 ```bash
