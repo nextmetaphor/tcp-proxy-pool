@@ -25,6 +25,10 @@ kubectl create -f _k8s/grafana/service.yaml --namespace=$NAMESPACE
 curl -X POST -u admin:admin "http://`minikube ip`:30103/api/datasources" -d @_k8s/grafana/data-source/tcp-proxy-pool.json --header "Content-Type: application/json"
 curl -X POST -u admin:admin "http://`minikube ip`:30103/api/datasources" -d @_k8s/grafana/data-source/gatling.json --header "Content-Type: application/json"
 
+# add the dashboards
+curl -X POST -u admin:admin "http://`minikube ip`:30103/api/dashboards/db" -d @_k8s/grafana/dashboard/gatling/gatling-dashboard.json --header "Content-Type: application/json"
+curl -X POST -u admin:admin "http://`minikube ip`:30103/api/dashboards/db" -d @_k8s/grafana/dashboard/monitoring/tcp-proxy-pool-dashboard.json --header "Content-Type: application/json"
+
 # log into the grafana dashboard (admin:admin)
 open http://`minikube ip`:30103
 ```
