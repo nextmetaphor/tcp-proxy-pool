@@ -1,15 +1,5 @@
 {
   "dashboard": {
-    "__inputs": [
-      {
-        "name": "DS_GATLING",
-        "label": "gatling",
-        "description": "",
-        "type": "datasource",
-        "pluginId": "influxdb",
-        "pluginName": "InfluxDB"
-      }
-    ],
     "__requires": [
       {
         "type": "grafana",
@@ -50,7 +40,7 @@
             "bars": false,
             "dashLength": 10,
             "dashes": false,
-            "datasource": "${DS_GATLING}",
+            "datasource": "gatling",
             "decimals": null,
             "fill": 1,
             "id": 1,
@@ -218,7 +208,7 @@
             "bars": false,
             "dashLength": 10,
             "dashes": false,
-            "datasource": "${DS_GATLING}",
+            "datasource": "gatling",
             "decimals": null,
             "fill": 1,
             "id": 3,
@@ -399,7 +389,7 @@
             "bars": false,
             "dashLength": 10,
             "dashes": false,
-            "datasource": "${DS_GATLING}",
+            "datasource": "gatling",
             "decimals": null,
             "fill": 1,
             "id": 4,
@@ -599,7 +589,7 @@
             "bars": false,
             "dashLength": 10,
             "dashes": false,
-            "datasource": "${DS_GATLING}",
+            "datasource": "gatling",
             "decimals": null,
             "fill": 1,
             "id": 2,
