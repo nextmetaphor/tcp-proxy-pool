@@ -15,7 +15,9 @@ type (
 	}
 
 	PoolSettings struct {
-		InitialSize int
+		InitialSize    int
+		MaximumSize    int
+		TargetFreeSize int
 	}
 
 	MonitorSettings struct {

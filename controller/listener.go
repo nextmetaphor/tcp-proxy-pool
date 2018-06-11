@@ -7,23 +7,28 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrpool"
 )
 
 const (
-	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener          = "Error creating customTLSListener"
-	logErrorAcceptingConnection       = "Error accepting connection"
-	logErrorCopying                   = "Error copying"
-	logErrorClosing                   = "Error closing"
-	logErrorLoadingCertificates       = "Error loading certificates"
-	logErrorServerConnNotTCP          = "Error: server connection not TCP"
-	logErrorClientConnNotTCP          = "Error: client connection not TCP"
-	logErrorAssigningContainer        = "Error: cannot assign container"
-	logErrorProxyingConnection        = "Error proxying connection"
+	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
+	logErrorCreatingListener    = "Error creating customTLSListener"
+	logErrorAcceptingConnection = "Error accepting connection"
+	logErrorCopying             = "Error copying"
+	logErrorClosing             = "Error closing"
+	logErrorLoadingCertificates = "Error loading certificates"
+	logErrorServerConnNotTCP    = "Error: server connection not TCP"
+	logErrorClientConnNotTCP    = "Error: client connection not TCP"
+	logErrorAssigningContainer  = "Error: cannot assign container"
+	logErrorProxyingConnection  = "Error proxying connection"
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
-	ctx.InitialiseContainerPool(cm)
+	cpContext := &cntrpool.ContainerPoolContext{
+		MonitorClient: ctx.MonitorClient,
+		PoolSettings:  ctx.Settings.Pool,
+		Logger:        ctx.Logger}
+	ctx.ContainerPool = cpContext.CreateContainerPool(cm)
 
 	monitorClient := ctx.MonitorClient.CreateMonitor()
 	if monitorClient != nil {
@@ -78,9 +83,14 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 
 // clientConnect is called in a separate goroutine for every successful Accept request on the server listener.
 func (ctx *Context) clientConnect(serverConn net.Conn) {
-	c, err := ctx.AssociateClientWithContainer(serverConn)
+	cpContext := &cntrpool.ContainerPoolContext{
+		MonitorClient: ctx.MonitorClient,
+		PoolSettings:  ctx.Settings.Pool,
+		Logger:        ctx.Logger}
+
+	c, err := cpContext.AssociateClientWithContainer(serverConn, ctx.ContainerPool)
 	if c != nil {
-		defer ctx.DissociateClientWithContainer(serverConn, c)
+		defer cpContext.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c)
 	}
 
 	if err != nil {
@@ -90,7 +100,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 		return
 	}
 
-	if err := ctx.ConnectClientToContainer(c); err != nil {
+	if err := cpContext.ConnectClientToContainer(c); err != nil {
 		log.Error(logErrorProxyingConnection, err, ctx.Logger)
 		return
 	}

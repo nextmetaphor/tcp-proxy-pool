@@ -1,4 +1,4 @@
-package controller
+package cntrpool
 
 import (
 	"net"
@@ -8,6 +8,9 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 	"sync"
+	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
+	"github.com/nextmetaphor/tcp-proxy-pool/application"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -30,26 +33,33 @@ type (
 
 		Containers map[string]*cntr.Container
 	}
+
+	ContainerPoolContext struct {
+		MonitorClient monitor.MonitorClient
+		PoolSettings  application.PoolSettings
+		Logger        *logrus.Logger
+	}
 )
 
-// InitialiseContainerPool creates a connection pool
-func (ctx *Context) InitialiseContainerPool(cm cntrmgr.ContainerManager) {
+// CreateContainerPool creates a connection pool
+func (ctx *ContainerPoolContext) CreateContainerPool(cm cntrmgr.ContainerManager) *ContainerPool {
 	pool := ContainerPool{
 		Containers: make(map[string]*cntr.Container),
 	}
-	ctx.ContainerPool = &pool
 
-	poolSize := ctx.Settings.Pool.InitialSize
+	poolSize := ctx.PoolSettings.InitialSize
 
 	// TODO create containers in parallel? this could take a while...
 	for i := 0; i < poolSize; i++ {
-		c, err := CreateContainer(ctx.ContainerPool, cm)
+		c, err := CreateContainer(&pool, cm)
 		if err != nil {
 			log.Error(logErrorCreatingContainer, err, ctx.Logger)
 			break
 		}
 		ctx.Logger.Infof(logCreatedContainer, c.ExternalID)
 	}
+
+	return &pool
 }
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
@@ -91,18 +101,18 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.Contai
 	return nil
 }
 
-func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
-	for _, container := range ctx.ContainerPool.Containers {
+func (ctx *ContainerPoolContext) AssociateClientWithContainer(conn net.Conn, pool *ContainerPool) (*cntr.Container, error) {
+	for _, container := range pool.Containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionFromClient == nil {
 			container.Lock()
 			if container.ConnectionFromClient == nil {
 				container.ConnectionFromClient = conn
 
-				ctx.ContainerPool.Lock()
-				ctx.ContainerPool.TotalContainersInUse++
-				ctx.MonitorClient.WriteConnectionPoolStats(conn, ctx.ContainerPool.TotalContainersInUse, len(ctx.ContainerPool.Containers))
-				ctx.ContainerPool.Unlock()
+				pool.Lock()
+				pool.TotalContainersInUse++
+				ctx.MonitorClient.WriteConnectionPoolStats(conn, pool.TotalContainersInUse, len(pool.Containers))
+				pool.Unlock()
 
 				ctx.MonitorClient.WriteConnectionAccepted(conn)
 
@@ -120,7 +130,7 @@ func (ctx *Context) AssociateClientWithContainer(conn net.Conn) (*cntr.Container
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func (ctx *Context) DissociateClientWithContainer(serverConn net.Conn, c *cntr.Container) {
+func (ctx *ContainerPoolContext) DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container) {
 	if c == nil {
 		ctx.Logger.Warnf(logNilContainerToDisassociate)
 		return
@@ -131,13 +141,13 @@ func (ctx *Context) DissociateClientWithContainer(serverConn net.Conn, c *cntr.C
 	c.ConnectionToContainer = nil
 	c.ConnectionFromClient = nil
 
-	ctx.ContainerPool.Lock()
-	ctx.ContainerPool.TotalContainersInUse--
-	ctx.MonitorClient.WriteConnectionPoolStats(serverConn, ctx.ContainerPool.TotalContainersInUse, len(ctx.ContainerPool.Containers))
-	ctx.ContainerPool.Unlock()
+	pool.Lock()
+	pool.TotalContainersInUse--
+	ctx.MonitorClient.WriteConnectionPoolStats(serverConn, pool.TotalContainersInUse, len(pool.Containers))
+	pool.Unlock()
 }
 
-func (ctx *Context) ConnectClientToContainer(c *cntr.Container) (error) {
+func (ctx *ContainerPoolContext) ConnectClientToContainer(c *cntr.Container) (error) {
 	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
 	if err != nil {
 		return err

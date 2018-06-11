@@ -4,6 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrpool"
 )
 
 type (
@@ -11,6 +12,6 @@ type (
 		Logger        *logrus.Logger
 		Settings      application.Settings
 		MonitorClient monitor.MonitorClient
-		ContainerPool *ContainerPool
+		ContainerPool *cntrpool.ContainerPool
 	}
 )
