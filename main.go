@@ -38,8 +38,8 @@ func main() {
 	// TODO overrride settings with flags
 
 	// start the monitor service
-	ctx.MonitorClient = monitor.MonitorClient{
-		Logger:   ctx.Logger,
+	ctx.MonitorClient = monitor.Client{
+		Logger:   *ctx.Logger,
 		Settings: ctx.Settings.Monitor,
 	}
 

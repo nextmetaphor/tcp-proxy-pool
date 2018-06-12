@@ -35,14 +35,14 @@ type (
 		Database string
 	}
 
-	MonitorClient struct {
+	Client struct {
 		Logger   logrus.Logger
 		Settings Settings
 		Client   *client.Client
 	}
 )
 
-func (mon *MonitorClient) CreateMonitor() *client.Client {
+func (mon *Client) CreateMonitor() *client.Client {
 	if (mon == nil) || strings.TrimSpace(mon.Settings.Address) == "" {
 		return nil
 	}
@@ -51,14 +51,14 @@ func (mon *MonitorClient) CreateMonitor() *client.Client {
 		Addr: mon.Settings.Address,
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorConnection, err, mon.Logger)
+		log.Error(logErrorCreatingMonitorConnection, err, &mon.Logger)
 	}
 
 	mon.Client = &monitorClient
 	return &monitorClient
 }
 
-func (mon MonitorClient) writePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
+func (mon *Client) writePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
 	if strings.TrimSpace(mon.Settings.Address) == "" {
 		return
 	}
@@ -69,25 +69,25 @@ func (mon MonitorClient) writePoint(measurementName string, tags map[string]stri
 		Precision: "ns",
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorBatch, err, mon.Logger)
+		log.Error(logErrorCreatingMonitorBatch, err, &mon.Logger)
 		return
 	}
 
 	pt, err := client.NewPoint(measurementName, tags, fields, time.Now())
 	if err != nil {
-		log.Error(logErrorCreatingPoint, err, mon.Logger)
+		log.Error(logErrorCreatingPoint, err, &mon.Logger)
 		return
 	}
 	bp.AddPoint(pt)
 
 	if mon.Client != nil {
 		if err := (*mon.Client).Write(bp); err != nil {
-			log.Error(logErrorWritingPoint, err, mon.Logger)
+			log.Error(logErrorWritingPoint, err, &mon.Logger)
 		}
 	}
 }
 
-func (mon MonitorClient) WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn) {
+func (mon *Client) WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn) {
 	var fields map[string]interface{}
 	var tags map[string]string
 	if srcIsServer {
@@ -110,7 +110,7 @@ func (mon MonitorClient) WriteBytesCopied(srcIsServer bool, totalBytesCopied int
 		fields)
 }
 
-func (mon MonitorClient) WriteConnectionAccepted(src net.Conn) {
+func (mon *Client) WriteConnectionAccepted(src net.Conn) {
 	go mon.writePoint(
 		measurementConnectionPool,
 		map[string]string{
@@ -120,7 +120,7 @@ func (mon MonitorClient) WriteConnectionAccepted(src net.Conn) {
 		map[string]interface{}{fieldConnectionsAccepted: 1})
 }
 
-func (mon MonitorClient) WriteConnectionRejected(src net.Conn) {
+func (mon *Client) WriteConnectionRejected(src net.Conn) {
 	go mon.writePoint(
 		measurementConnectionPool,
 		map[string]string{
@@ -130,7 +130,7 @@ func (mon MonitorClient) WriteConnectionRejected(src net.Conn) {
 		map[string]interface{}{fieldConnectionsRejected: 1})
 }
 
-func (mon MonitorClient) WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int) {
+func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int) {
 	go mon.writePoint(
 		measurementConnectionPool,
 		map[string]string{

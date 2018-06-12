@@ -9,9 +9,10 @@ import (
 
 type (
 	Context struct {
-		Logger        logrus.Logger
+		// Logger needs to be a pointer due to MutexWrap
+		Logger        *logrus.Logger
 		Settings      application.Settings
-		MonitorClient monitor.MonitorClient
+		MonitorClient monitor.Client
 		ContainerPool *cntrpool.ContainerPool
 	}
 )

@@ -51,7 +51,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l logrus.Logg
 	for i := 0; i < ps.InitialSize; i++ {
 		c, err := CreateContainer(&pool, cm)
 		if err != nil {
-			log.Error(logErrorCreatingContainer, err, l)
+			log.Error(logErrorCreatingContainer, err, &l)
 			break
 		}
 		l.Infof(logCreatedContainer, c.ExternalID)
@@ -99,7 +99,7 @@ func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.Contai
 	return nil
 }
 
-func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monitor.MonitorClient) (*cntr.Container, error) {
+func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monitor.Client) (*cntr.Container, error) {
 	for _, container := range pool.Containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionFromClient == nil {
@@ -128,7 +128,7 @@ func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monito
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container, mon monitor.MonitorClient, logger logrus.Logger) {
+func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container, mon monitor.Client, logger logrus.Logger) {
 	if c == nil {
 		logger.Warnf(logNilContainerToDisassociate)
 		return

@@ -20,7 +20,7 @@ func init() {
 	//logger.Formatter = &logrus.JSONFormatter{}
 }
 
-func Get(level string) logrus.Logger {
+func Get(level string) *logrus.Logger {
 	switch level {
 	case LevelError:
 		logger.Level = logrus.ErrorLevel
@@ -31,10 +31,12 @@ func Get(level string) logrus.Logger {
 	default:
 		logger.Level = logrus.InfoLevel
 	}
-	return *logger
+	return logger
 }
 
-func Error(description string, err error, logger logrus.Logger) {
-	logger.WithFields(logrus.Fields{
-		logFieldErrorCause: err}).Error(description)
+func Error(description string, err error, logger *logrus.Logger) {
+	if logger != nil {
+		logger.WithFields(logrus.Fields{
+			logFieldErrorCause: err}).Error(description)
+	}
 }
