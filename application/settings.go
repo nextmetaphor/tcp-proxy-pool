@@ -3,6 +3,9 @@ package application
 import (
 	"os"
 	"encoding/json"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrpool"
+	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
+	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
 )
 
 type (
@@ -14,34 +17,11 @@ type (
 		KeyFile   string
 	}
 
-	PoolSettings struct {
-		InitialSize    int
-		MaximumSize    int
-		TargetFreeSize int
-	}
-
-	MonitorSettings struct {
-		Address  string
-		Database string
-	}
-
-	ECSSettings struct {
-		Profile                      string
-		Region                       string
-		Cluster                      string
-		TaskDefinition               string
-		LaunchType                   string
-		AssignPublicIP               string
-		Subnets                      []string
-		SecurityGroups               []string
-		MaximumContainerStartTimeSec int
-	}
-
 	Settings struct {
 		Listener ListenerSettings
-		Pool     PoolSettings
-		Monitor  MonitorSettings
-		ECS      ECSSettings
+		Pool     cntrpool.Settings
+		Monitor  monitor.Settings
+		ECS      cntrmgr.Settings
 	}
 )
 

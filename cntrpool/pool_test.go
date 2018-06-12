@@ -124,5 +124,7 @@ func Test_DestroyContainer(t *testing.T) {
 		err := DestroyContainer("42", nil, tcm)
 		assert.NotNil(t, err, "error should have been returned")
 	})
+}
 
+func Test_CreateContainerPool(t *testing.T) {
 }

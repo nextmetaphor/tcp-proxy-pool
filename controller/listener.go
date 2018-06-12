@@ -24,11 +24,7 @@ const (
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
-	cpContext := &cntrpool.ContainerPoolContext{
-		MonitorClient: ctx.MonitorClient,
-		PoolSettings:  ctx.Settings.Pool,
-		Logger:        ctx.Logger}
-	ctx.ContainerPool = cpContext.CreateContainerPool(cm)
+	ctx.ContainerPool = cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, *ctx.Logger)
 
 	monitorClient := ctx.MonitorClient.CreateMonitor()
 	if monitorClient != nil {
@@ -83,14 +79,9 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 
 // clientConnect is called in a separate goroutine for every successful Accept request on the server listener.
 func (ctx *Context) clientConnect(serverConn net.Conn) {
-	cpContext := &cntrpool.ContainerPoolContext{
-		MonitorClient: ctx.MonitorClient,
-		PoolSettings:  ctx.Settings.Pool,
-		Logger:        ctx.Logger}
-
-	c, err := cpContext.AssociateClientWithContainer(serverConn, ctx.ContainerPool)
+	c, err := cntrpool.AssociateClientWithContainer(serverConn, ctx.ContainerPool, ctx.MonitorClient)
 	if c != nil {
-		defer cpContext.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c)
+		defer cntrpool.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c, ctx.MonitorClient, *ctx.Logger)
 	}
 
 	if err != nil {
@@ -100,7 +91,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 		return
 	}
 
-	if err := cpContext.ConnectClientToContainer(c); err != nil {
+	if err := cntrpool.ConnectClientToContainer(c); err != nil {
 		log.Error(logErrorProxyingConnection, err, ctx.Logger)
 		return
 	}

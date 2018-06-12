@@ -4,7 +4,6 @@ import (
 	"github.com/influxdata/influxdb/client/v2"
 	"time"
 	"strings"
-	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/sirupsen/logrus"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"net"
@@ -31,9 +30,14 @@ const (
 )
 
 type (
+	Settings struct {
+		Address  string
+		Database string
+	}
+
 	MonitorClient struct {
 		Logger   logrus.Logger
-		Settings application.MonitorSettings
+		Settings Settings
 		Client   *client.Client
 	}
 )

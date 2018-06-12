@@ -1,6 +1,8 @@
 package cntrmgr
 
-import "github.com/nextmetaphor/tcp-proxy-pool/cntr"
+import (
+	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
+)
 
 type (
 	ContainerManager interface {

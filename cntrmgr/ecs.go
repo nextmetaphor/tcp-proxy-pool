@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/sirupsen/logrus"
-	"github.com/nextmetaphor/tcp-proxy-pool/application"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 )
 
@@ -24,9 +23,21 @@ const (
 )
 
 type (
+	Settings struct {
+		Profile                      string
+		Region                       string
+		Cluster                      string
+		TaskDefinition               string
+		LaunchType                   string
+		AssignPublicIP               string
+		Subnets                      []string
+		SecurityGroups               []string
+		MaximumContainerStartTimeSec int
+	}
+
 	ECS struct {
 		Logger     logrus.Logger
-		Conf       application.ECSSettings
+		Conf       Settings
 		ECSService *ecs.ECS
 	}
 )
