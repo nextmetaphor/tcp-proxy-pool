@@ -24,7 +24,7 @@ const (
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
-	ctx.ContainerPool = cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, *ctx.Logger)
+	ctx.ContainerPool = cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger)
 
 	monitorClient := ctx.MonitorClient.CreateMonitor()
 	if monitorClient != nil {
@@ -81,7 +81,7 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 func (ctx *Context) clientConnect(serverConn net.Conn) {
 	c, err := cntrpool.AssociateClientWithContainer(serverConn, ctx.ContainerPool, ctx.MonitorClient)
 	if c != nil {
-		defer cntrpool.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c, ctx.MonitorClient, *ctx.Logger)
+		defer cntrpool.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c, ctx.MonitorClient, ctx.Logger)
 	}
 
 	if err != nil {

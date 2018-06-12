@@ -9,7 +9,7 @@ import (
 
 type (
 	Context struct {
-		Logger        *logrus.Logger
+		Logger        logrus.Logger
 		Settings      application.Settings
 		MonitorClient monitor.MonitorClient
 		ContainerPool *cntrpool.ContainerPool

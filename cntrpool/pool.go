@@ -51,7 +51,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l logrus.Logg
 	for i := 0; i < ps.InitialSize; i++ {
 		c, err := CreateContainer(&pool, cm)
 		if err != nil {
-			log.Error(logErrorCreatingContainer, err, &l)
+			log.Error(logErrorCreatingContainer, err, l)
 			break
 		}
 		l.Infof(logCreatedContainer, c.ExternalID)

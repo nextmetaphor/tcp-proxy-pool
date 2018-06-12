@@ -51,7 +51,7 @@ func (mon *MonitorClient) CreateMonitor() *client.Client {
 		Addr: mon.Settings.Address,
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorConnection, err, &mon.Logger)
+		log.Error(logErrorCreatingMonitorConnection, err, mon.Logger)
 	}
 
 	mon.Client = &monitorClient
@@ -69,20 +69,20 @@ func (mon MonitorClient) writePoint(measurementName string, tags map[string]stri
 		Precision: "ns",
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorBatch, err, &mon.Logger)
+		log.Error(logErrorCreatingMonitorBatch, err, mon.Logger)
 		return
 	}
 
 	pt, err := client.NewPoint(measurementName, tags, fields, time.Now())
 	if err != nil {
-		log.Error(logErrorCreatingPoint, err, &mon.Logger)
+		log.Error(logErrorCreatingPoint, err, mon.Logger)
 		return
 	}
 	bp.AddPoint(pt)
 
 	if mon.Client != nil {
 		if err := (*mon.Client).Write(bp); err != nil {
-			log.Error(logErrorWritingPoint, err, &mon.Logger)
+			log.Error(logErrorWritingPoint, err, mon.Logger)
 		}
 	}
 }
