@@ -39,7 +39,7 @@ func main() {
 
 	// start the monitor service
 	ctx.MonitorClient = monitor.Client{
-		Logger:   *ctx.Logger,
+		Logger:   ctx.Logger,
 		Settings: ctx.Settings.Monitor,
 	}
 

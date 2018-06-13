@@ -13,7 +13,7 @@ type (
 	}
 
 	customTCPConn struct {
-		tls.Conn
+		*tls.Conn
 		InnerConn net.Conn
 	}
 )
@@ -26,7 +26,7 @@ func (l *customTLSListener) Accept() (net.Conn, error) {
 	tlsConn := tls.Server(tcpConn, l.config)
 
 	return &customTCPConn{
-		Conn:      *tlsConn,
+		Conn:      tlsConn,
 		InnerConn: tcpConn,
 	}, nil
 }

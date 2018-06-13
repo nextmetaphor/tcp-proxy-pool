@@ -64,7 +64,7 @@ func (cm *ECS) InitialiseECSService() (error) {
 	return nil
 }
 
-func (cm ECS) CreateContainer() (*cntr.Container, error) {
+func (cm *ECS) CreateContainer() (*cntr.Container, error) {
 	runTaskInput := &ecs.RunTaskInput{
 		Cluster:        aws.String(cm.Conf.Cluster),
 		TaskDefinition: aws.String(cm.Conf.TaskDefinition),
@@ -136,7 +136,7 @@ func (cm ECS) CreateContainer() (*cntr.Container, error) {
 	}, nil
 }
 
-func (cm ECS) DestroyContainer(externalID string) (error) {
+func (cm *ECS) DestroyContainer(externalID string) (error) {
 	// TODO obvs needs implementing
 	return nil
 }

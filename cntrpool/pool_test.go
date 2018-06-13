@@ -26,7 +26,7 @@ var (
 	}
 )
 
-func (tcm TestNilContainerManager) CreateContainer() (*cntr.Container, error) {
+func (cm TestNilContainerManager) CreateContainer() (*cntr.Container, error) {
 	return nil, nil
 }
 
@@ -34,11 +34,11 @@ func (cm TestNilContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 
-func (tcm TestContainerManager) CreateContainer() (*cntr.Container, error) {
+func (cm TestContainerManager) CreateContainer() (*cntr.Container, error) {
 	return testContainer42, nil
 }
 
-func (tcm TestContainerManager) DestroyContainer(externalID string) (error) {
+func (cm TestContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 

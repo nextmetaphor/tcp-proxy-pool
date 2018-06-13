@@ -42,7 +42,7 @@ type (
 )
 
 // CreateContainerPool creates a connection pool
-func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l logrus.Logger) *ContainerPool {
+func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l *logrus.Logger) *ContainerPool {
 	pool := ContainerPool{
 		Containers: make(map[string]*cntr.Container),
 	}
@@ -51,7 +51,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l logrus.Logg
 	for i := 0; i < ps.InitialSize; i++ {
 		c, err := CreateContainer(&pool, cm)
 		if err != nil {
-			log.Error(logErrorCreatingContainer, err, &l)
+			log.Error(logErrorCreatingContainer, err, l)
 			break
 		}
 		l.Infof(logCreatedContainer, c.ExternalID)
@@ -128,7 +128,7 @@ func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monito
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container, mon monitor.Client, logger logrus.Logger) {
+func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container, mon monitor.Client, logger *logrus.Logger) {
 	if c == nil {
 		logger.Warnf(logNilContainerToDisassociate)
 		return
