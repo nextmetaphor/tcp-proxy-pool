@@ -36,53 +36,56 @@ type (
 	}
 
 	Client struct {
-		Logger   *logrus.Logger
-		Settings Settings
-		Client   *client.Client
+		logger   *logrus.Logger
+		settings Settings
+		Client   client.Client
 	}
 )
 
-func (mon *Client) CreateMonitor() *client.Client {
-	if (mon == nil) || strings.TrimSpace(mon.Settings.Address) == "" {
+func CreateMonitor(ms Settings, l *logrus.Logger) *Client {
+	if strings.TrimSpace(ms.Address) == "" {
 		return nil
 	}
 
 	monitorClient, err := client.NewUDPClient(client.UDPConfig{
-		Addr: mon.Settings.Address,
+		Addr: ms.Address,
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorConnection, err, mon.Logger)
+		log.Error(logErrorCreatingMonitorConnection, err, l)
 	}
 
-	mon.Client = &monitorClient
-	return &monitorClient
+	return &Client{
+		Client:   monitorClient,
+		settings: ms,
+		logger:   l,
+	}
 }
 
 func (mon *Client) writePoint(measurementName string, tags map[string]string, fields map[string]interface{}) {
-	if strings.TrimSpace(mon.Settings.Address) == "" {
+	if strings.TrimSpace(mon.settings.Address) == "" {
 		return
 	}
 
 	// TODO - new batch every time???
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database:  mon.Settings.Database,
+		Database:  mon.settings.Database,
 		Precision: "ns",
 	})
 	if err != nil {
-		log.Error(logErrorCreatingMonitorBatch, err, mon.Logger)
+		log.Error(logErrorCreatingMonitorBatch, err, mon.logger)
 		return
 	}
 
 	pt, err := client.NewPoint(measurementName, tags, fields, time.Now())
 	if err != nil {
-		log.Error(logErrorCreatingPoint, err, mon.Logger)
+		log.Error(logErrorCreatingPoint, err, mon.logger)
 		return
 	}
 	bp.AddPoint(pt)
 
 	if mon.Client != nil {
-		if err := (*mon.Client).Write(bp); err != nil {
-			log.Error(logErrorWritingPoint, err, mon.Logger)
+		if err := (mon.Client).Write(bp); err != nil {
+			log.Error(logErrorWritingPoint, err, mon.logger)
 		}
 	}
 }

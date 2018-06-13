@@ -26,11 +26,6 @@ const (
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	ctx.ContainerPool = cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger)
 
-	monitorClient := ctx.MonitorClient.CreateMonitor()
-	if monitorClient != nil {
-		defer (*monitorClient).Close()
-	}
-
 	ctx.Logger.Infof(logSecureServerStarting,
 		ctx.Settings.Listener.Host,
 		ctx.Settings.Listener.Port,

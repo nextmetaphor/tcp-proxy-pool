@@ -9,7 +9,7 @@ import (
 
 type (
 	Context struct {
-		// Logger needs to be a pointer due to MutexWrap
+		// logger needs to be a pointer due to MutexWrap
 		Logger        *logrus.Logger
 		Settings      application.Settings
 		MonitorClient monitor.Client
