@@ -24,8 +24,10 @@ const (
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
-	ctx.ContainerPool = cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger)
+	// TODO don't ignore the error
+	cp, _ := cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger, ctx.MonitorClient)
 
+	ctx.ContainerPool = cp
 	ctx.Logger.Infof(logSecureServerStarting,
 		ctx.Settings.Listener.Host,
 		ctx.Settings.Listener.Port,
@@ -74,9 +76,9 @@ func (ctx *Context) handleConnections(listener net.Listener) {
 
 // clientConnect is called in a separate goroutine for every successful Accept request on the server listener.
 func (ctx *Context) clientConnect(serverConn net.Conn) {
-	c, err := cntrpool.AssociateClientWithContainer(serverConn, ctx.ContainerPool, ctx.MonitorClient)
+	c, err := ctx.ContainerPool.AssociateClientWithContainer(serverConn)
 	if c != nil {
-		defer cntrpool.DissociateClientWithContainer(serverConn, ctx.ContainerPool, c, ctx.MonitorClient, ctx.Logger)
+		defer ctx.ContainerPool.DissociateClientWithContainer(serverConn, c)
 	}
 
 	if err != nil {

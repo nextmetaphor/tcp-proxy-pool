@@ -18,10 +18,12 @@ const (
 	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
 	logContainerDoesNotExist      = "The container with ID [%s] to disassociate from the client does not exist in the pool"
 
+	errorContainerManagerNil           = "error creating container pool: container manager cannot be nil"
+	errorLoggerNil                     = "error creating container pool: logger cannot be nil"
 	errorContainerPoolNilCannotCreate  = "Pool is nil; cannot create container"
-	errorCreatedContainerCannotBeNil   = "Created container cannot be nil"
-	errorContainerPoolNilCannotDestroy = "Pool is nil; cannot destroy container"
-	errorContainerPoolFull             = "Pool is full; cannot allocate connection to container"
+	errorCreatedContainerCannotBeNil   = "created container cannot be nil"
+	errorContainerPoolNilCannotDestroy = "pool is nil; cannot destroy container"
+	errorContainerPoolFull             = "pool is full; cannot allocate connection to container"
 )
 
 type (
@@ -38,18 +40,34 @@ type (
 		TotalContainersInUse int
 
 		Containers map[string]*cntr.Container
+
+		logger   *logrus.Logger
+		settings Settings
+		manager  cntrmgr.ContainerManager
+		monitor  monitor.Client
 	}
 )
 
 // CreateContainerPool creates a connection pool
-func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l *logrus.Logger) *ContainerPool {
-	pool := ContainerPool{
+func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logger, m monitor.Client) (pool *ContainerPool, err error) {
+	if cm == nil {
+		return nil, errors.New(errorContainerManagerNil)
+	}
+	if l == nil {
+		return nil, errors.New(errorLoggerNil)
+	}
+
+	pool = &ContainerPool{
 		Containers: make(map[string]*cntr.Container),
+		logger:     l,
+		settings:   s,
+		manager:    cm,
+		monitor:    m,
 	}
 
 	// TODO create containers in parallel? this could take a while...
-	for i := 0; i < ps.InitialSize; i++ {
-		c, err := CreateContainer(&pool, cm)
+	for i := 0; i < s.InitialSize; i++ {
+		c, err := pool.CreateContainer()
 		if err != nil {
 			log.Error(logErrorCreatingContainer, err, l)
 			break
@@ -57,62 +75,54 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, ps Settings, l *logrus.Log
 		l.Infof(logCreatedContainer, c.ExternalID)
 	}
 
-	return &pool
+	return pool, nil
 }
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
 // created container.
-func CreateContainer(pool *ContainerPool, cm cntrmgr.ContainerManager) (c *cntr.Container, err error) {
-	if pool == nil {
-		return c, errors.New(errorContainerPoolNilCannotCreate)
-	}
-
-	c, err = cm.CreateContainer()
+func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
+	c, err = cp.manager.CreateContainer()
 	if err != nil {
 		// TODO - add monitoring here
 		return c, err
 	}
 
-	if (c == nil) {
+	if c == nil {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
-	pool.Lock()
-	defer pool.Unlock()
-	pool.Containers[c.ExternalID] = c
+	cp.Lock()
+	defer cp.Unlock()
+	cp.Containers[c.ExternalID] = c
 
 	return c, nil
 }
 
-func DestroyContainer(containerID string, pool *ContainerPool, cm cntrmgr.ContainerManager) (err error) {
-	if pool == nil {
-		return errors.New(errorContainerPoolNilCannotDestroy)
-	}
-
+func (cp *ContainerPool) DestroyContainer(containerID string) (err error) {
 	// TODO errors?
-	cm.DestroyContainer(containerID)
+	cp.manager.DestroyContainer(containerID)
 
-	pool.Lock()
-	defer pool.Unlock()
-	delete(pool.Containers, containerID)
+	cp.Lock()
+	defer cp.Unlock()
+	delete(cp.Containers, containerID)
 
 	// TODO - add monitoring here
 	return nil
 }
 
-func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monitor.Client) (*cntr.Container, error) {
-	for _, container := range pool.Containers {
+func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
+	for _, container := range cp.Containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionFromClient == nil {
 			container.Lock()
 			if container.ConnectionFromClient == nil {
 				container.ConnectionFromClient = conn
 
-				pool.Lock()
-				pool.TotalContainersInUse++
-				mon.WriteConnectionPoolStats(conn, pool.TotalContainersInUse, len(pool.Containers))
-				pool.Unlock()
+				cp.Lock()
+				cp.TotalContainersInUse++
+				cp.monitor.WriteConnectionPoolStats(conn, cp.TotalContainersInUse, len(cp.Containers))
+				cp.Unlock()
 
-				mon.WriteConnectionAccepted(conn)
+				cp.monitor.WriteConnectionAccepted(conn)
 
 				container.Unlock()
 
@@ -124,13 +134,13 @@ func AssociateClientWithContainer(conn net.Conn, pool *ContainerPool, mon monito
 		}
 	}
 
-	mon.WriteConnectionRejected(conn)
+	cp.monitor.WriteConnectionRejected(conn)
 	return nil, errors.New(errorContainerPoolFull)
 }
 
-func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *cntr.Container, mon monitor.Client, logger *logrus.Logger) {
+func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *cntr.Container) {
 	if c == nil {
-		logger.Warnf(logNilContainerToDisassociate)
+		cp.logger.Warnf(logNilContainerToDisassociate)
 		return
 	}
 
@@ -139,10 +149,10 @@ func DissociateClientWithContainer(serverConn net.Conn, pool *ContainerPool, c *
 	c.ConnectionToContainer = nil
 	c.ConnectionFromClient = nil
 
-	pool.Lock()
-	pool.TotalContainersInUse--
-	mon.WriteConnectionPoolStats(serverConn, pool.TotalContainersInUse, len(pool.Containers))
-	pool.Unlock()
+	cp.Lock()
+	cp.TotalContainersInUse--
+	cp.monitor.WriteConnectionPoolStats(serverConn, cp.TotalContainersInUse, len(cp.Containers))
+	cp.Unlock()
 }
 
 func ConnectClientToContainer(c *cntr.Container) (error) {

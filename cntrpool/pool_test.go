@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 type (
@@ -45,9 +46,11 @@ func (cm TestContainerManager) DestroyContainer(externalID string) (error) {
 
 func Test_CreateContainer(t *testing.T) {
 	tcm  := TestContainerManager{}
+	logger, hook := test.NewNullLogger()
+	cp := CreateContainerPool(tcm, )
 
 	t.Run("NilPool", func(t *testing.T) {
-		c, err := CreateContainer(nil, tcm)
+		c, err := cp.CreateContainer(nil, tcm)
 		assert.Nil(t, c, "nil container should have been returned")
 		assert.NotNil(t, err, "error should have been returned")
 	})
@@ -56,7 +59,7 @@ func Test_CreateContainer(t *testing.T) {
 		pool := ContainerPool{
 			Containers: make(map[string]*cntr.Container),
 		}
-		c, err := CreateContainer(&pool, tcm)
+		c, err := cp.CreateContainer()
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
 		assert.Equal(t, 1, len(pool.Containers), "pool size incorrect")
@@ -70,7 +73,7 @@ func Test_CreateContainer(t *testing.T) {
 		pool.Containers[testContainer1.ExternalID] = testContainer1
 		pool.Containers[testContainer2.ExternalID] = testContainer2
 
-		c, err := CreateContainer(&pool, tcm)
+		c, err := cp.CreateContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
@@ -88,7 +91,7 @@ func Test_CreateContainer(t *testing.T) {
 		pool.Containers[testContainer2.ExternalID] = testContainer2
 		pool.Containers[testContainer42.ExternalID] = testContainer42
 
-		c, err := CreateContainer(&pool, tcm)
+		c, err := cp.CreateContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
@@ -106,7 +109,7 @@ func Test_CreateContainer(t *testing.T) {
 		pool.Containers[testContainer2.ExternalID] = testContainer2
 		pool.Containers[testContainer42.ExternalID] = testContainer42
 
-		c, err := CreateContainer(&pool, TestNilContainerManager{})
+		c, err := cp.CreateContainer(&pool, TestNilContainerManager{})
 
 		assert.NotNil(t, err, "error expected")
 		assert.Nil(t, c, "nil container expected")
