@@ -20,9 +20,7 @@ const (
 
 	errorContainerManagerNil           = "error creating container pool: container manager cannot be nil"
 	errorLoggerNil                     = "error creating container pool: logger cannot be nil"
-	errorContainerPoolNilCannotCreate  = "Pool is nil; cannot create container"
 	errorCreatedContainerCannotBeNil   = "created container cannot be nil"
-	errorContainerPoolNilCannotDestroy = "pool is nil; cannot destroy container"
 	errorContainerPoolFull             = "pool is full; cannot allocate connection to container"
 )
 
@@ -39,6 +37,7 @@ type (
 		// TotalContainersInUse can be calculated from Containers but included here for speed purposes
 		TotalContainersInUse int
 
+		// TODO this shouldn't be public
 		Containers map[string]*cntr.Container
 
 		logger   *logrus.Logger
@@ -65,6 +64,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 		monitor:    m,
 	}
 
+	// TODO should this be a separate function?
 	// TODO create containers in parallel? this could take a while...
 	for i := 0; i < s.InitialSize; i++ {
 		c, err := pool.CreateContainer()
