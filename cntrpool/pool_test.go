@@ -6,6 +6,7 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
+	"errors"
 )
 
 type (
@@ -125,4 +126,30 @@ func Test_DestroyContainer(t *testing.T) {
 }
 
 func Test_CreateContainerPool(t *testing.T) {
+	l, _ := test.NewNullLogger()
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
+	tcm  := TestContainerManager{}
+	s := Settings{}
+
+	t.Run("NilLogger", func (t *testing.T) {
+		cp, err := CreateContainerPool(tcm, s, nil, *m)
+		assert.Equal(t, errors.New(errorLoggerNil), err)
+		assert.Nil(t, cp)
+	})
+
+	t.Run("NilContainerManager", func (t *testing.T) {
+		cp, err := CreateContainerPool(nil, s, l, *m)
+		assert.Equal(t, errors.New(errorContainerManagerNil), err)
+		assert.Nil(t, cp)
+	})
+
+	t.Run("ValidCall", func (t *testing.T) {
+		cp, err := CreateContainerPool(tcm, s, l, *m)
+		assert.Equal(t, l, cp.logger)
+		assert.Equal(t, s, cp.settings)
+		assert.Equal(t, m, &cp.monitor)
+		assert.Equal(t, tcm, cp.manager)
+
+		assert.Nil(t, err)
+	})
 }
