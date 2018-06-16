@@ -7,12 +7,16 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
 	"errors"
+	"strconv"
+	"github.com/sirupsen/logrus"
 )
 
 type (
-	TestContainerManager struct {}
+	Test42ContainerManager struct {}
 
 	TestNilContainerManager struct {}
+
+	TestIncrementContainerManager struct {}
 )
 
 var (
@@ -27,6 +31,8 @@ var (
 	testContainer42 = &cntr.Container{
 		ExternalID: "42",
 	}
+
+	nextContainerID = 0
 )
 
 func (cm TestNilContainerManager) CreateContainer() (*cntr.Container, error) {
@@ -37,11 +43,20 @@ func (cm TestNilContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 
-func (cm TestContainerManager) CreateContainer() (*cntr.Container, error) {
+func (cm Test42ContainerManager) CreateContainer() (*cntr.Container, error) {
 	return testContainer42, nil
 }
 
-func (cm TestContainerManager) DestroyContainer(externalID string) (error) {
+func (cm Test42ContainerManager) DestroyContainer(externalID string) (error) {
+	return nil
+}
+
+func (cm TestIncrementContainerManager) CreateContainer() (*cntr.Container, error) {
+	nextContainerID++
+	return &cntr.Container{ExternalID: strconv.Itoa(nextContainerID)}, nil
+}
+
+func (cm TestIncrementContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
 }
 
@@ -50,7 +65,7 @@ func Test_CreateContainer(t *testing.T) {
 	logger, _ := test.NewNullLogger()
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, logger)
 
-	tcm  := TestContainerManager{}
+	tcm  := Test42ContainerManager{}
 	cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
 
 	t.Run("EmptyPool", func(t *testing.T) {
@@ -118,7 +133,7 @@ func Test_CreateContainer(t *testing.T) {
 
 func Test_DestroyContainer(t *testing.T) {
 	// TODO
-	//tcm  := TestContainerManager{}
+	//tcm  := Test42ContainerManager{}
 	//logger, _ := test.NewNullLogger()
 	//m := monitor.CreateMonitor(monitor.Settings{Address: "Something"}, logger)
 	//
@@ -128,7 +143,7 @@ func Test_DestroyContainer(t *testing.T) {
 func Test_CreateContainerPool(t *testing.T) {
 	l, _ := test.NewNullLogger()
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
-	tcm  := TestContainerManager{}
+	tcm  := Test42ContainerManager{}
 	s := Settings{}
 
 	t.Run("NilLogger", func (t *testing.T) {
@@ -151,5 +166,41 @@ func Test_CreateContainerPool(t *testing.T) {
 		assert.Equal(t, tcm, cp.manager)
 
 		assert.Nil(t, err)
+	})
+}
+
+func Test_InitialisePool(t *testing.T) {
+	l, h := test.NewNullLogger()
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
+	tcm  := TestIncrementContainerManager{}
+
+	t.Run("PoolSizeOf0", func (t *testing.T) {
+		s := Settings{InitialSize: 0}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		err := cp.InitialisePool()
+		assert.Nil(t, err)
+		assert.Equal(t, 0, len(cp.Containers))
+	})
+
+	t.Run("PoolSizeOf1", func (t *testing.T) {
+		s := Settings{InitialSize: 1}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		err := cp.InitialisePool()
+		assert.Nil(t, err)
+		assert.Equal(t, 1, len(cp.Containers))
+	})
+
+	t.Run("PoolSizeOf10", func (t *testing.T) {
+		h.Reset()
+		s := Settings{InitialSize: 10}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		err := cp.InitialisePool()
+		assert.Nil(t, err)
+		assert.Equal(t, 10, len(cp.Containers))
+		assert.Equal(t, 10, len(h.AllEntries()))
+		for _, tl := range h.AllEntries() {
+			assert.Equal(t, logrus.InfoLevel, tl.Level)
+			assert.Contains(t, logCreatedContainer, tl.Message)
+		}
 	})
 }

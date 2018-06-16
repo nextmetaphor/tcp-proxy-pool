@@ -27,6 +27,9 @@ func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	// TODO don't ignore the error
 	cp, _ := cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger, ctx.MonitorClient)
 
+	// TODO errors?
+	cp.InitialisePool()
+
 	ctx.ContainerPool = cp
 	ctx.Logger.Infof(logSecureServerStarting,
 		ctx.Settings.Listener.Host,

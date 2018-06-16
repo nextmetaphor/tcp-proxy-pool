@@ -4,24 +4,26 @@ import (
 	"net"
 	"errors"
 	"strconv"
-	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 	"sync"
 	"github.com/sirupsen/logrus"
 	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
+	logCreatedContainer = "created container"
+	logFieldContainerId = "container-id"
+
 	logErrorCreatingContainer     = "Error creating container"
-	logCreatedContainer           = "Created container with ID [%s]"
 	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
 	logContainerDoesNotExist      = "The container with ID [%s] to disassociate from the client does not exist in the pool"
 
-	errorContainerManagerNil           = "error creating container pool: container manager cannot be nil"
-	errorLoggerNil                     = "error creating container pool: logger cannot be nil"
-	errorCreatedContainerCannotBeNil   = "created container cannot be nil"
-	errorContainerPoolFull             = "pool is full; cannot allocate connection to container"
+	errorContainerManagerNil         = "error creating container pool: container manager cannot be nil"
+	errorLoggerNil                   = "error creating container pool: logger cannot be nil"
+	errorCreatedContainerCannotBeNil = "created container cannot be nil"
+	errorContainerPoolFull           = "pool is full; cannot allocate connection to container"
 )
 
 type (
@@ -64,18 +66,21 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 		monitor:    m,
 	}
 
-	// TODO should this be a separate function?
-	// TODO create containers in parallel? this could take a while...
-	for i := 0; i < s.InitialSize; i++ {
-		c, err := pool.CreateContainer()
+	return pool, nil
+}
+
+func (cp *ContainerPool) InitialisePool() (err error) {
+	// TODO better to create containers in parallel
+	for i := 0; i < cp.settings.InitialSize; i++ {
+		c, err := cp.CreateContainer()
 		if err != nil {
-			log.Error(logErrorCreatingContainer, err, l)
+			log.Error(logErrorCreatingContainer, err, cp.logger)
 			break
 		}
-		l.Infof(logCreatedContainer, c.ExternalID)
+		cp.logger.WithFields(logrus.Fields{logFieldContainerId: c.ExternalID}).Infof(logCreatedContainer)
 	}
 
-	return pool, nil
+	return nil
 }
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
