@@ -69,18 +69,19 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 	return pool, nil
 }
 
-func (cp *ContainerPool) InitialisePool() (err error) {
+func (cp *ContainerPool) InitialisePool() (errors []error) {
 	// TODO better to create containers in parallel
 	for i := 0; i < cp.settings.InitialSize; i++ {
 		c, err := cp.CreateContainer()
 		if err != nil {
 			log.Error(logErrorCreatingContainer, err, cp.logger)
-			break
+			errors = append(errors, err)
+			continue
 		}
 		cp.logger.WithFields(logrus.Fields{logFieldContainerId: c.ExternalID}).Infof(logCreatedContainer)
 	}
 
-	return nil
+	return errors
 }
 
 // CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the

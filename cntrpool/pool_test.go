@@ -11,12 +11,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	errorInitialiseError = "some error"
+)
+
 type (
 	Test42ContainerManager struct {}
 
 	TestNilContainerManager struct {}
 
 	TestIncrementContainerManager struct {}
+
+	TestErrContainerManager struct {}
+
 )
 
 var (
@@ -58,6 +65,14 @@ func (cm TestIncrementContainerManager) CreateContainer() (*cntr.Container, erro
 
 func (cm TestIncrementContainerManager) DestroyContainer(externalID string) (error) {
 	return nil
+}
+
+func (cm TestErrContainerManager) CreateContainer() (*cntr.Container, error) {
+	return nil, errors.New(errorInitialiseError)
+}
+
+func (cm TestErrContainerManager) DestroyContainer(externalID string) (error) {
+	return errors.New(errorInitialiseError)
 }
 
 
@@ -201,6 +216,20 @@ func Test_InitialisePool(t *testing.T) {
 		for _, tl := range h.AllEntries() {
 			assert.Equal(t, logrus.InfoLevel, tl.Level)
 			assert.Contains(t, logCreatedContainer, tl.Message)
+		}
+	})
+
+	t.Run("ErrorCreatingContainer", func (t *testing.T) {
+		h.Reset()
+		s := Settings{InitialSize: 3}
+		cp, _ := CreateContainerPool(TestErrContainerManager{}, s, l, *m)
+		err := cp.InitialisePool()
+		assert.Equal(t, []error {errors.New(errorInitialiseError), errors.New(errorInitialiseError), errors.New(errorInitialiseError)}, err)
+		assert.Equal(t, 0, len(cp.Containers))
+		assert.Equal(t, 3, len(h.AllEntries()))
+		for _, tl := range h.AllEntries() {
+			assert.Equal(t, logrus.ErrorLevel, tl.Level)
+			assert.Contains(t, logErrorCreatingContainer, tl.Message)
 		}
 	})
 }
