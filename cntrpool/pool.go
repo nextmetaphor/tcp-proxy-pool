@@ -69,35 +69,41 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 }
 
 func (cp *ContainerPool) InitialisePool() (errors []error) {
-	// TODO better to create containers in parallel
-	for i := 0; i < cp.settings.InitialSize; i++ {
+	return cp.addContainersToPool(cp.settings.InitialSize)
+}
+
+func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error) {
+	// TODO obvs better to create containers in parallel
+	for i := 0; i < numContainers; i++ {
 		c, err := cp.CreateContainer()
 		if err != nil {
-			log.Error(logErrorCreatingContainer, err, cp.logger)
 			errors = append(errors, err)
 			continue
 		}
-		cp.logger.WithFields(logrus.Fields{logFieldContainerId: c.ExternalID}).Infof(logCreatedContainer)
+		cp.Lock()
+		cp.containers[c.ExternalID] = c
+		cp.Unlock()
 	}
 
 	return errors
 }
 
-// CreateContainer creates a new Container and adds it to the ContainerPool, indexed by the ExternalID of the
-// created container.
+// CreateContainer creates a new Container, returning a pointer to the container or the error that occurred.
+// It does not associate it with the connection pool due to locking reasons: we don't want to lock the pool
+// whilst the container is being created. We create the container first; only locking the pool when we want to
+// add the container pointer.
 func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 	c, err = cp.manager.CreateContainer()
 	if err != nil {
+		log.Error(logErrorCreatingContainer, err, cp.logger)
+
 		// TODO - add monitoring here
 		return c, err
 	}
-
 	if c == nil {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
-	cp.Lock()
-	defer cp.Unlock()
-	cp.containers[c.ExternalID] = c
+	cp.logger.WithFields(logrus.Fields{logFieldContainerId: c.ExternalID}).Infof(logCreatedContainer)
 
 	return c, nil
 }
@@ -114,6 +120,33 @@ func (cp *ContainerPool) DestroyContainer(containerID string) (err error) {
 	return nil
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// scaleUpPoolIfRequired is called when a successful connection has been made, and will increase the size of the
+// pool should it be required.
+func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
+	unusedCapacity := len(cp.containers) - cp.totalContainersInUse
+	if cp.settings.TargetFreeSize > unusedCapacity {
+		// check to see whether we can scale
+		newContainersRequired := cp.settings.MaximumSize - len(cp.containers)
+
+		amountToScale := min(newContainersRequired, cp.settings.TargetFreeSize)
+		if amountToScale > 0 {
+			return cp.addContainersToPool(amountToScale)
+		}
+	}
+
+	return nil
+}
+
+// AssociateClientWithContainer is called whenever a client connection is made requiring a container to
+// service it. This is essentially one of the 'core' function handling both associating connections with containers,
+// but also scaling the up pool when new connection requests are made.
 func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
 	for _, container := range cp.containers {
 		// find the first container with no current connection from the client
@@ -131,6 +164,8 @@ func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Cont
 
 				container.Unlock()
 
+				// TODO errors?
+				cp.scaleUpPoolIfRequired()
 				return container, nil
 			}
 
@@ -143,6 +178,9 @@ func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Cont
 	return nil, errors.New(errorContainerPoolFull)
 }
 
+// DissociateClientWithContainer is called whenever a client connection disconnected.
+// This is essentially one of the 'core' function handling both disassociating connections with containers,
+// but also scaling the down pool when new connection requests are made.
 func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *cntr.Container) {
 	if c == nil {
 		cp.logger.Warnf(logNilContainerToDisassociate)

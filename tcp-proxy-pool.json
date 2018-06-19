@@ -7,7 +7,9 @@
     "KeyFile": "server.key"
   },
   "Pool": {
-    "InitialSize": 15
+    "InitialSize": 15,
+    "MaximumSize": 25,
+    "TargetFreeSize": 5
   },
   "Monitor": {
     "Address": "192.168.64.30:30102",
