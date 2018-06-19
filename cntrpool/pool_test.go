@@ -84,54 +84,54 @@ func Test_CreateContainer(t *testing.T) {
 	cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
 
 	t.Run("EmptyPool", func(t *testing.T) {
-		cp.Containers = make(map[string]*cntr.Container)
+		cp.containers = make(map[string]*cntr.Container)
 		c, err := cp.CreateContainer()
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 1, len(cp.Containers), "pool size incorrect")
-		assert.Equal(t, testContainer42, cp.Containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 1, len(cp.containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, cp.containers[testContainer42.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolNewContainer", func(t *testing.T) {
-		cp.Containers = make(map[string]*cntr.Container)
-		cp.Containers[testContainer1.ExternalID] = testContainer1
-		cp.Containers[testContainer2.ExternalID] = testContainer2
+		cp.containers = make(map[string]*cntr.Container)
+		cp.containers[testContainer1.ExternalID] = testContainer1
+		cp.containers[testContainer2.ExternalID] = testContainer2
 
 		c, err := cp.CreateContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 3, len(cp.Containers), "pool size incorrect")
-		assert.Equal(t, testContainer42, cp.Containers[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, cp.Containers[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, cp.Containers[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(cp.containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, cp.containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, cp.containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, cp.containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolExistingContainer", func(t *testing.T) {
 		pool := ContainerPool{
-			Containers: make(map[string]*cntr.Container),
+			containers: make(map[string]*cntr.Container),
 		}
-		pool.Containers[testContainer1.ExternalID] = testContainer1
-		pool.Containers[testContainer2.ExternalID] = testContainer2
-		pool.Containers[testContainer42.ExternalID] = testContainer42
+		pool.containers[testContainer1.ExternalID] = testContainer1
+		pool.containers[testContainer2.ExternalID] = testContainer2
+		pool.containers[testContainer42.ExternalID] = testContainer42
 
 		c, err := cp.CreateContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
-		assert.Equal(t, 3, len(pool.Containers), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, pool.Containers[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, pool.Containers[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(pool.containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool.containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool.containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 
 	t.Run("ExistingPoolNilContainer", func(t *testing.T) {
 		pool := ContainerPool{
-			Containers: make(map[string]*cntr.Container),
+			containers: make(map[string]*cntr.Container),
 		}
-		pool.Containers[testContainer1.ExternalID] = testContainer1
-		pool.Containers[testContainer2.ExternalID] = testContainer2
-		pool.Containers[testContainer42.ExternalID] = testContainer42
+		pool.containers[testContainer1.ExternalID] = testContainer1
+		pool.containers[testContainer2.ExternalID] = testContainer2
+		pool.containers[testContainer42.ExternalID] = testContainer42
 
 		tcm  := TestNilContainerManager{}
 		cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
@@ -139,10 +139,10 @@ func Test_CreateContainer(t *testing.T) {
 
 		assert.NotNil(t, err, "error expected")
 		assert.Nil(t, c, "nil container expected")
-		assert.Equal(t, 3, len(pool.Containers), "pool size incorrect")
-		assert.Equal(t, testContainer42, pool.Containers[testContainer42.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer1, pool.Containers[testContainer1.ExternalID], "incorrect container in pool")
-		assert.Equal(t, testContainer2, pool.Containers[testContainer2.ExternalID], "incorrect container in pool")
+		assert.Equal(t, 3, len(pool.containers), "pool size incorrect")
+		assert.Equal(t, testContainer42, pool.containers[testContainer42.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer1, pool.containers[testContainer1.ExternalID], "incorrect container in pool")
+		assert.Equal(t, testContainer2, pool.containers[testContainer2.ExternalID], "incorrect container in pool")
 	})
 }
 
@@ -194,7 +194,7 @@ func Test_InitialisePool(t *testing.T) {
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
-		assert.Equal(t, 0, len(cp.Containers))
+		assert.Equal(t, 0, len(cp.containers))
 	})
 
 	t.Run("PoolSizeOf1", func (t *testing.T) {
@@ -202,7 +202,7 @@ func Test_InitialisePool(t *testing.T) {
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(cp.Containers))
+		assert.Equal(t, 1, len(cp.containers))
 	})
 
 	t.Run("PoolSizeOf10", func (t *testing.T) {
@@ -211,7 +211,7 @@ func Test_InitialisePool(t *testing.T) {
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
-		assert.Equal(t, 10, len(cp.Containers))
+		assert.Equal(t, 10, len(cp.containers))
 		assert.Equal(t, 10, len(h.AllEntries()))
 		for _, tl := range h.AllEntries() {
 			assert.Equal(t, logrus.InfoLevel, tl.Level)
@@ -225,7 +225,7 @@ func Test_InitialisePool(t *testing.T) {
 		cp, _ := CreateContainerPool(TestErrContainerManager{}, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Equal(t, []error {errors.New(errorInitialiseError), errors.New(errorInitialiseError), errors.New(errorInitialiseError)}, err)
-		assert.Equal(t, 0, len(cp.Containers))
+		assert.Equal(t, 0, len(cp.containers))
 		assert.Equal(t, 3, len(h.AllEntries()))
 		for _, tl := range h.AllEntries() {
 			assert.Equal(t, logrus.ErrorLevel, tl.Level)

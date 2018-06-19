@@ -36,16 +36,15 @@ type (
 	ContainerPool struct {
 		sync.RWMutex
 
-		// TotalContainersInUse can be calculated from Containers but included here for speed purposes
-		TotalContainersInUse int
-
-		// TODO this shouldn't be public
-		Containers map[string]*cntr.Container
+		containers map[string]*cntr.Container
 
 		logger   *logrus.Logger
 		settings Settings
 		manager  cntrmgr.ContainerManager
 		monitor  monitor.Client
+
+		// totalContainersInUse can be calculated from containers but included here for speed purposes
+		totalContainersInUse int
 	}
 )
 
@@ -59,7 +58,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 	}
 
 	pool = &ContainerPool{
-		Containers: make(map[string]*cntr.Container),
+		containers: make(map[string]*cntr.Container),
 		logger:     l,
 		settings:   s,
 		manager:    cm,
@@ -98,7 +97,7 @@ func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 	}
 	cp.Lock()
 	defer cp.Unlock()
-	cp.Containers[c.ExternalID] = c
+	cp.containers[c.ExternalID] = c
 
 	return c, nil
 }
@@ -109,14 +108,14 @@ func (cp *ContainerPool) DestroyContainer(containerID string) (err error) {
 
 	cp.Lock()
 	defer cp.Unlock()
-	delete(cp.Containers, containerID)
+	delete(cp.containers, containerID)
 
 	// TODO - add monitoring here
 	return nil
 }
 
 func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
-	for _, container := range cp.Containers {
+	for _, container := range cp.containers {
 		// find the first container with no current connection from the client
 		if container.ConnectionFromClient == nil {
 			container.Lock()
@@ -124,8 +123,8 @@ func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Cont
 				container.ConnectionFromClient = conn
 
 				cp.Lock()
-				cp.TotalContainersInUse++
-				cp.monitor.WriteConnectionPoolStats(conn, cp.TotalContainersInUse, len(cp.Containers))
+				cp.totalContainersInUse++
+				cp.monitor.WriteConnectionPoolStats(conn, cp.totalContainersInUse, len(cp.containers))
 				cp.Unlock()
 
 				cp.monitor.WriteConnectionAccepted(conn)
@@ -156,8 +155,8 @@ func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *c
 	c.ConnectionFromClient = nil
 
 	cp.Lock()
-	cp.TotalContainersInUse--
-	cp.monitor.WriteConnectionPoolStats(serverConn, cp.TotalContainersInUse, len(cp.Containers))
+	cp.totalContainersInUse--
+	cp.monitor.WriteConnectionPoolStats(serverConn, cp.totalContainersInUse, len(cp.containers))
 	cp.Unlock()
 }
 
