@@ -133,9 +133,9 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 	unusedCapacity := len(cp.containers) - cp.totalContainersInUse
 	if cp.settings.TargetFreeSize > unusedCapacity {
 		// check to see whether we can scale
-		newContainersRequired := cp.settings.MaximumSize - len(cp.containers)
+		numNewContainersRequired := cp.settings.TargetFreeSize - unusedCapacity
 
-		amountToScale := min(newContainersRequired, cp.settings.TargetFreeSize)
+		amountToScale := min(numNewContainersRequired, cp.settings.MaximumSize - len(cp.containers))
 		if amountToScale > 0 {
 			return cp.addContainersToPool(amountToScale)
 		}
