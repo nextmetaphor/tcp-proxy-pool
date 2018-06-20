@@ -233,3 +233,25 @@ func Test_InitialisePool(t *testing.T) {
 		}
 	})
 }
+
+func Test_GetNewContainersRequired(t *testing.T) {
+	t.Run("PoolEmptyRoomToFullyExtend", func (t *testing.T) {
+		i := getNewContainersRequired(0, 5, 0, 5)
+		assert.Equal(t, 5, i)
+	})
+
+	t.Run("PoolEmptyRoomToFullyExtend", func (t *testing.T) {
+		i := getNewContainersRequired(0, 4, 0, 5)
+		assert.Equal(t, 4, i)
+	})
+
+	t.Run("PoolPartiallyUsedRoomToPartiallyExtend", func (t *testing.T) {
+		i := getNewContainersRequired(2, 5, 0, 5)
+		assert.Equal(t, 3, i)
+	})
+
+	t.Run("PoolFullyUsedNoRoomToExtend", func (t *testing.T) {
+		i := getNewContainersRequired(5, 5, 0, 5)
+		assert.Equal(t, 0, i)
+	})
+}

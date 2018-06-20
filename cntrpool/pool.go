@@ -127,6 +127,19 @@ func min(a, b int) int {
 	return b
 }
 
+func getNewContainersRequired(sizePool, maxSizePool, freePool, targetFreePool int) (numContainers int) {
+	numContainers = 0
+	if targetFreePool > freePool {
+		numNewContainersRequired := targetFreePool - freePool
+		amountToScale := min(numNewContainersRequired, maxSizePool - sizePool)
+		if amountToScale > 0 {
+			numContainers = amountToScale
+		}
+	}
+
+	return numContainers
+}
+
 // scaleUpPoolIfRequired is called when a successful connection has been made, and will increase the size of the
 // pool should it be required.
 func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
