@@ -143,15 +143,9 @@ func getNewContainersRequired(sizePool, maxSizePool, freePool, targetFreePool in
 // scaleUpPoolIfRequired is called when a successful connection has been made, and will increase the size of the
 // pool should it be required.
 func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
-	unusedCapacity := len(cp.containers) - cp.totalContainersInUse
-	if cp.settings.TargetFreeSize > unusedCapacity {
-		// check to see whether we can scale
-		numNewContainersRequired := cp.settings.TargetFreeSize - unusedCapacity
-
-		amountToScale := min(numNewContainersRequired, cp.settings.MaximumSize - len(cp.containers))
-		if amountToScale > 0 {
-			return cp.addContainersToPool(amountToScale)
-		}
+	amountToScale := getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.containers) - cp.totalContainersInUse, cp.settings.TargetFreeSize)
+	if amountToScale > 0 {
+		return cp.addContainersToPool(amountToScale)
 	}
 
 	return nil

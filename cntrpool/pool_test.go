@@ -235,23 +235,48 @@ func Test_InitialisePool(t *testing.T) {
 }
 
 func Test_GetNewContainersRequired(t *testing.T) {
-	t.Run("PoolEmptyRoomToFullyExtend", func (t *testing.T) {
-		i := getNewContainersRequired(0, 5, 0, 5)
+	t.Run("ZeroSizeCreateAllTarget", func (t *testing.T) {
+		i := getNewContainersRequired(0, 10, 0, 5)
 		assert.Equal(t, 5, i)
 	})
-
-	t.Run("PoolEmptyRoomToFullyExtend", func (t *testing.T) {
-		i := getNewContainersRequired(0, 4, 0, 5)
-		assert.Equal(t, 4, i)
+	t.Run("ZeroSizeCreatePartialTarget", func (t *testing.T) {
+		i := getNewContainersRequired(0, 10, 3, 5)
+		assert.Equal(t, 2, i)
+	})
+	t.Run("ZeroSizeCreateZeroTarget", func (t *testing.T) {
+		i := getNewContainersRequired(0, 10, 5, 5)
+		assert.Equal(t, 0, i)
 	})
 
-	t.Run("PoolPartiallyUsedRoomToPartiallyExtend", func (t *testing.T) {
-		i := getNewContainersRequired(2, 5, 0, 5)
+	t.Run("NonZeroSizeCreateAllTarget", func (t *testing.T) {
+		i := getNewContainersRequired(3, 10, 0, 5)
+		assert.Equal(t, 5, i)
+	})
+	t.Run("NonZeroSizeCreatePartialTarget", func (t *testing.T) {
+		i := getNewContainersRequired(3, 10, 3, 5)
+		assert.Equal(t, 2, i)
+	})
+	t.Run("NonZeroSizeCreateZeroTarget", func (t *testing.T) {
+		i := getNewContainersRequired(3, 10, 5, 5)
+		assert.Equal(t, 0, i)
+	})
+
+	t.Run("NonZeroSizeCreateAllTargetWithMaxRestriction", func (t *testing.T) {
+		i := getNewContainersRequired(7, 10, 0, 5)
+		assert.Equal(t, 3, i)
+	})
+	t.Run("NonZeroSizeCreatePartialTargetWithMaxRestriction", func (t *testing.T) {
+		i := getNewContainersRequired(7, 10, 1, 5)
 		assert.Equal(t, 3, i)
 	})
 
-	t.Run("PoolFullyUsedNoRoomToExtend", func (t *testing.T) {
-		i := getNewContainersRequired(5, 5, 0, 5)
+	t.Run("IdenticalNegatives", func (t *testing.T) {
+		i := getNewContainersRequired(-10, -10, -10, -10)
 		assert.Equal(t, 0, i)
 	})
+	t.Run("DifferentNegatives", func (t *testing.T) {
+		i := getNewContainersRequired(-7, -10, -2, -5)
+		assert.Equal(t, 0, i)
+	})
+
 }
