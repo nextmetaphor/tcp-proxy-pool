@@ -278,5 +278,31 @@ func Test_GetNewContainersRequired(t *testing.T) {
 		i := getNewContainersRequired(-7, -10, -2, -5)
 		assert.Equal(t, 0, i)
 	})
+}
 
+func Test_GetOldContainersNoLongerRequired(t *testing.T) {
+	t.Run("BothNegative", func (t *testing.T) {
+		i := getOldContainersNoLongerRequired(-15, -7)
+		assert.Equal(t, 0, i)
+	})
+
+	t.Run("BothZero", func (t *testing.T) {
+		i := getOldContainersNoLongerRequired(0, 0)
+		assert.Equal(t, 0, i)
+	})
+
+	t.Run("FreeLessThanTarget", func (t *testing.T) {
+		i := getOldContainersNoLongerRequired(2, 5)
+		assert.Equal(t, 0, i)
+	})
+
+	t.Run("FreeEqualToTarget", func (t *testing.T) {
+		i := getOldContainersNoLongerRequired(2, 2)
+		assert.Equal(t, 0, i)
+	})
+
+	t.Run("FreeGreaterThanTarget", func (t *testing.T) {
+		i := getOldContainersNoLongerRequired(5, 2)
+		assert.Equal(t, 3, i)
+	})
 }
