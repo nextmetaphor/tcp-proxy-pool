@@ -88,6 +88,33 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error)
 	return errors
 }
 
+func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []error) {
+	containersToRemove := make([]string, numContainers)
+
+	for _, container := range cp.containers {
+		if numContainers < len(containersToRemove) {
+			// find the first container with no current connection from the client which is not in the process
+			// of being removed from the pool
+			if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
+				container.Lock()
+				if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
+					container.IsBeingRemoved = true
+					containersToRemove = append(containersToRemove, container.ExternalID)
+				}
+				container.Unlock()
+			}
+		}
+	}
+
+	cp.Lock()
+	defer cp.Unlock()
+	for _, cId := range containersToRemove {
+		errors = append(errors, cp.DestroyContainer(cId))
+	}
+
+	return errors
+}
+
 // CreateContainer creates a new Container, returning a pointer to the container or the error that occurred.
 // It does not associate it with the connection pool due to locking reasons: we don't want to lock the pool
 // whilst the container is being created. We create the container first; only locking the pool when we want to
@@ -109,15 +136,13 @@ func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 }
 
 func (cp *ContainerPool) DestroyContainer(containerID string) (err error) {
-	// TODO errors?
-	cp.manager.DestroyContainer(containerID)
+	err = cp.manager.DestroyContainer(containerID)
 
-	cp.Lock()
-	defer cp.Unlock()
+	// TODO lock here?
 	delete(cp.containers, containerID)
 
 	// TODO - add monitoring here
-	return nil
+	return err
 }
 
 func min(a, b int) int {
@@ -160,15 +185,27 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 	return nil
 }
 
+func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
+	amountToScale := getOldContainersNoLongerRequired(cp.totalContainersInUse, cp.settings.TargetFreeSize)
+	if amountToScale > 0 {
+		return cp.removeContainersFromPool(amountToScale)
+	}
+
+	return nil
+}
+
+
+
 // AssociateClientWithContainer is called whenever a client connection is made requiring a container to
 // service it. This is essentially one of the 'core' function handling both associating connections with containers,
 // but also scaling the up pool when new connection requests are made.
 func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
 	for _, container := range cp.containers {
-		// find the first container with no current connection from the client
-		if container.ConnectionFromClient == nil {
+		// find the first container with no current connection from the client which is not in the process
+		// of being removed from the pool
+		if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
 			container.Lock()
-			if container.ConnectionFromClient == nil {
+			if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
 				container.ConnectionFromClient = conn
 
 				cp.Lock()
@@ -212,6 +249,8 @@ func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *c
 	cp.totalContainersInUse--
 	cp.monitor.WriteConnectionPoolStats(serverConn, cp.totalContainersInUse, len(cp.containers))
 	cp.Unlock()
+
+	//cp.scaleDownPoolIfRequired()
 }
 
 func ConnectClientToContainer(c *cntr.Container) (error) {
