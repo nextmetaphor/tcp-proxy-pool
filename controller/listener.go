@@ -139,7 +139,7 @@ func (ctx *Context) proxy(c *cntr.Container) {
 }
 
 func (ctx *Context) connectionCopy(srcIsServer bool, dst, src net.Conn, sourceClosedChannel chan struct{}) {
-	bytesCopied, err := io.Copy(dst, src);
+	bytesCopied, err := io.Copy(dst, src)
 	if err != nil {
 		log.Error(logErrorCopying, err, ctx.Logger)
 	}
