@@ -14,7 +14,7 @@ import (
 
 const (
 	logCreatedContainer = "created container"
-	logFieldContainerId = "container-id"
+	logFieldContainerID = "container-id"
 
 	logErrorCreatingContainer     = "Error creating container"
 	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
@@ -35,14 +35,13 @@ type (
 
 	containerStatus struct {
 		sync.RWMutex
+		isScaling bool
 
 		usedContainers   map[string]*cntr.Container
 		unusedContainers map[string]*cntr.Container
 	}
 
 	ContainerPool struct {
-		//sync.RWMutex
-
 		// master map of all containers
 		containers map[string]*cntr.Container
 
@@ -52,9 +51,6 @@ type (
 		settings Settings
 		manager  cntrmgr.ContainerManager
 		monitor  monitor.Client
-
-		// totalContainersInUse can be calculated from containers but included here for speed purposes
-		//totalContainersInUse int
 	}
 )
 
@@ -94,9 +90,21 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error)
 			errors = append(errors, err)
 			continue
 		}
-		//cp.Lock()
-		cp.containers[c.ExternalID] = c
-		//cp.Unlock()
+
+		cp.status.Lock()
+		{
+			// check that if at this time pool hasn't changed - if so, destroy the container
+			if len(cp.containers) < cp.settings.MaximumSize {
+				cp.status.unusedContainers[c.ExternalID] = c
+				cp.containers[c.ExternalID] = c
+			} else {
+				// TODO errors?
+				cp.DestroyContainer(c)
+			}
+
+		}
+		cp.status.Unlock()
+
 	}
 
 	return errors
@@ -106,45 +114,28 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 	containersToRemove := make(map[string]*cntr.Container, numContainers)
 
 	cp.status.Lock()
-	containersRemoved := 0
-	for cID, c := range cp.status.unusedContainers {
-		containersRemoved++
+	{
+		for cID, c := range cp.status.unusedContainers {
+			containersToRemove[cID] = c
 
-		containersToRemove[cID] = c
+			delete(cp.status.unusedContainers, cID)
+			delete(cp.containers, cID)
 
-		delete(cp.status.unusedContainers, cID)
-		delete(cp.containers, cID)
-		if containersRemoved >= numContainers {
-			break
+			// shouldn't be possible but just in case...
+			delete(cp.status.usedContainers, cID)
+
+			if len(containersToRemove) >= numContainers {
+				break
+			}
 		}
 	}
 	cp.status.Unlock()
 
+	// at this point these containers are no longer referenced from the pool so can be destroyed
+	// without a lock
 	for _, c := range containersToRemove {
 		errors = append(errors, cp.DestroyContainer(c))
 	}
-
-	//
-	//for _, container := range cp.containers {
-	//	if numContainers < len(containersToRemove) {
-	//		// find the first container with no current connection from the client which is not in the process
-	//		// of being removed from the pool
-	//		if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
-	//			container.Lock()
-	//			if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
-	//				container.IsBeingRemoved = true
-	//				containersToRemove = append(containersToRemove, container.ExternalID)
-	//			}
-	//			container.Unlock()
-	//		}
-	//	}
-	//}
-
-	//cp.Lock()
-	//defer cp.Unlock()
-	//for _, cId := range containersToRemove {
-	//	errors = append(errors, cp.DestroyContainer(cId))
-	//}
 
 	return errors
 }
@@ -164,22 +155,13 @@ func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 	if c == nil {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
-	cp.logger.WithFields(logrus.Fields{logFieldContainerId: c.ExternalID}).Infof(logCreatedContainer)
-
-	cp.status.Lock()
-	cp.status.unusedContainers[c.ExternalID] = c
-	cp.status.Unlock()
+	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logCreatedContainer)
 
 	return c, nil
 }
 
 func (cp *ContainerPool) DestroyContainer(c *cntr.Container) (err error) {
 	err = cp.manager.DestroyContainer(c.ExternalID)
-
-	cp.status.Lock()
-	cp.status.unusedContainers[c.ExternalID] = c
-	delete(cp.status.usedContainers, c.ExternalID)
-	cp.status.Unlock()
 
 	// TODO - add monitoring here
 	return err
@@ -217,21 +199,51 @@ func getOldContainersNoLongerRequired(freePool, targetFreePool int) (numContaine
 // scaleUpPoolIfRequired is called when a successful connection has been made, and will increase the size of the
 // pool should it be required.
 func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
-	amountToScale := getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
+	amountToScale := 0
+	cp.status.Lock()
+	{
+		if !cp.status.isScaling {
+			cp.status.isScaling = true
+			amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
+		}
+	}
+	cp.status.Unlock()
+
 	if amountToScale > 0 {
-		return cp.addContainersToPool(amountToScale)
+		errors = cp.addContainersToPool(amountToScale)
 	}
 
-	return nil
+	cp.status.Lock()
+	{
+		cp.status.isScaling = false
+	}
+	cp.status.Unlock()
+
+	return errors
 }
 
 func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
-	amountToScale := getOldContainersNoLongerRequired(len(cp.status.usedContainers), cp.settings.TargetFreeSize)
+	amountToScale := 0
+	cp.status.Lock()
+	{
+		if !cp.status.isScaling {
+			cp.status.isScaling = true
+			amountToScale = getOldContainersNoLongerRequired(len(cp.status.usedContainers), cp.settings.TargetFreeSize)
+		}
+	}
+	cp.status.Unlock()
+
 	if amountToScale > 0 {
-		return cp.removeContainersFromPool(amountToScale)
+		errors = cp.removeContainersFromPool(amountToScale)
 	}
 
-	return nil
+	cp.status.Lock()
+	{
+		cp.status.isScaling = false
+	}
+	cp.status.Unlock()
+
+	return errors
 }
 
 // AssociateClientWithContainer is called whenever a client connection is made requiring a container to
@@ -239,7 +251,7 @@ func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
 // but also scaling the up pool when new connection requests are made.
 func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Container, error) {
 	var cID = ""
-	var c *cntr.Container = nil
+	var c *cntr.Container
 
 	cp.status.Lock()
 
@@ -263,33 +275,6 @@ func (cp *ContainerPool) AssociateClientWithContainer(conn net.Conn) (*cntr.Cont
 		return c, nil
 	}
 
-	//for _, container := range cp.containers {
-	//	// find the first container with no current connection from the client which is not in the process
-	//	// of being removed from the pool
-	//	if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
-	//		container.Lock()
-	//		if (container.ConnectionFromClient == nil) && !container.IsBeingRemoved {
-	//			container.ConnectionFromClient = conn
-	//
-	//			cp.Lock()
-	//			cp.totalContainersInUse++
-	//			cp.monitor.WriteConnectionPoolStats(conn, cp.totalContainersInUse, len(cp.containers))
-	//			cp.Unlock()
-	//
-	//			cp.monitor.WriteConnectionAccepted(conn)
-	//
-	//			container.Unlock()
-	//
-	//			// TODO errors?
-	//			cp.scaleUpPoolIfRequired()
-	//			return container, nil
-	//		}
-	//
-	//		// ...otherwise another thread has beat us to it - try and find another one
-	//		container.Unlock()
-	//	}
-	//}
-
 	cp.monitor.WriteConnectionRejected(conn)
 	return nil, errors.New(errorContainerPoolFull)
 }
@@ -304,26 +289,17 @@ func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *c
 	}
 
 	cp.status.Lock()
+	{
+		c.ConnectionFromClient = nil
 
-	cp.status.unusedContainers[c.ExternalID] = c
-	delete(cp.status.usedContainers, c.ExternalID)
+		cp.status.unusedContainers[c.ExternalID] = c
+		delete(cp.status.usedContainers, c.ExternalID)
 
-	//c.ConnectionToContainer = nil
-	c.ConnectionFromClient = nil
-
-	cp.monitor.WriteConnectionPoolStats(serverConn, len(cp.status.usedContainers), len(cp.containers))
-
+		cp.monitor.WriteConnectionPoolStats(serverConn, len(cp.status.usedContainers), len(cp.containers))
+	}
 	cp.status.Unlock()
 
-	//c.Lock()
-	//defer c.Unlock()
-
-	//cp.Lock()
-	//cp.totalContainersInUse--
-	//cp.monitor.WriteConnectionPoolStats(serverConn, cp.totalContainersInUse, len(cp.containers))
-	//cp.Unlock()
-
-	//cp.scaleDownPoolIfRequired()
+	cp.scaleDownPoolIfRequired()
 }
 
 func ConnectClientToContainer(c *cntr.Container) (error) {
@@ -332,7 +308,6 @@ func ConnectClientToContainer(c *cntr.Container) (error) {
 		return err
 	}
 
-	// no need to lock here
 	c.ConnectionToContainer = conn
 
 	return nil
