@@ -13,8 +13,17 @@ import (
 )
 
 const (
-	logCreatedContainer = "created container"
-	logFieldContainerID = "container-id"
+	logMsgCreatedContainer         = "created container"
+	logMsgDestroyedContainer       = "destroyed container"
+	logMsgNewContainersRequired    = "calculating new containers required"
+	logMsgOldContainersNotRequired = "calculating old containers not required"
+
+	logFieldContainerID           = "container-id"
+	logFieldSizePool              = "size-pool"
+	logFieldMaxSizePool           = "max-size-pool"
+	logFieldFreePool              = "free-pool"
+	logFieldTargetFreePool        = "target-free-pool"
+	logFieldNewContainersRequired = "new-containers-required"
 
 	logErrorCreatingContainer     = "Error creating container"
 	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
@@ -155,13 +164,15 @@ func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 	if c == nil {
 		return c, errors.New(errorCreatedContainerCannotBeNil)
 	}
-	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logCreatedContainer)
+	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logMsgCreatedContainer)
 
 	return c, nil
 }
 
 func (cp *ContainerPool) DestroyContainer(c *cntr.Container) (err error) {
 	err = cp.manager.DestroyContainer(c.ExternalID)
+
+	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logMsgDestroyedContainer)
 
 	// TODO - add monitoring here
 	return err
@@ -205,6 +216,14 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 		if !cp.status.isScaling {
 			cp.status.isScaling = true
 			amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
+			cp.logger.WithFields(logrus.Fields{
+				logFieldSizePool:              len(cp.containers),
+				logFieldMaxSizePool:           cp.settings.MaximumSize,
+				logFieldFreePool:              len(cp.status.unusedContainers),
+				logFieldTargetFreePool:        cp.settings.TargetFreeSize,
+				logFieldNewContainersRequired: amountToScale,
+			}).Infof(logMsgNewContainersRequired)
+
 		}
 	}
 	cp.status.Unlock()

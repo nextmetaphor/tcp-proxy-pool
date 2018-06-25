@@ -215,7 +215,7 @@ func Test_InitialisePool(t *testing.T) {
 		assert.Equal(t, 10, len(h.AllEntries()))
 		for _, tl := range h.AllEntries() {
 			assert.Equal(t, logrus.InfoLevel, tl.Level)
-			assert.Contains(t, logCreatedContainer, tl.Message)
+			assert.Contains(t, logMsgCreatedContainer, tl.Message)
 		}
 	})
 
