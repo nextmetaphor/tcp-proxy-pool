@@ -1,15 +1,16 @@
 package cntrpool
 
 import (
-	"net"
 	"errors"
-	"strconv"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
-	"sync"
-	"github.com/sirupsen/logrus"
-	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
 	"github.com/nextmetaphor/tcp-proxy-pool/log"
+	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
+	"github.com/sirupsen/logrus"
+	"net"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (
@@ -17,13 +18,19 @@ const (
 	logMsgDestroyedContainer       = "destroyed container"
 	logMsgNewContainersRequired    = "calculating new containers required"
 	logMsgOldContainersNotRequired = "calculating old containers not required"
+	logMsgScaleDownStatus          = "scale down status"
 
-	logFieldContainerID           = "container-id"
-	logFieldSizePool              = "size-pool"
-	logFieldMaxSizePool           = "max-size-pool"
-	logFieldFreePool              = "free-pool"
-	logFieldTargetFreePool        = "target-free-pool"
-	logFieldNewContainersRequired = "new-containers-required"
+	logFieldContainerID              = "container-id"
+	logFieldSizePool                 = "size-pool"
+	logFieldMaxSizePool              = "max-size-pool"
+	logFieldFreePool                 = "free-pool"
+	logFieldUsedPool                 = "used-pool"
+	logFieldTargetFreePool           = "target-free-pool"
+	logFieldNewContainersRequired    = "new-containers-required"
+	logFieldOldContainersNotRequired = "old-containers-not-required"
+	logFieldLastScaleDownTime        = "last-scale-down-time"
+	logFieldNextScaleDownTime        = "next-scale-down-time"
+	logFieldCurrentTime              = "current-time"
 
 	logErrorCreatingContainer     = "Error creating container"
 	logNilContainerToDisassociate = "Nil container to disassociate from the container pool"
@@ -40,18 +47,20 @@ type (
 		InitialSize    int
 		MaximumSize    int
 		TargetFreeSize int
+		ScaleDownDelay int
 	}
 
 	containerStatus struct {
 		sync.RWMutex
-		isScaling bool
+		isScaling     bool
+		lastScaleDown time.Time
 
 		usedContainers   map[string]*cntr.Container
 		unusedContainers map[string]*cntr.Container
 	}
 
 	ContainerPool struct {
-		// master map of all containers
+		// master map of all containers - do not iterate over this, it is not synchronised, use the status field
 		containers map[string]*cntr.Container
 
 		status containerStatus
@@ -77,6 +86,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 		status: containerStatus{
 			unusedContainers: make(map[string]*cntr.Container),
 			usedContainers:   make(map[string]*cntr.Container),
+			lastScaleDown:    time.Now(),
 		},
 		logger:   l,
 		settings: s,
@@ -222,7 +232,7 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 				logFieldFreePool:              len(cp.status.unusedContainers),
 				logFieldTargetFreePool:        cp.settings.TargetFreeSize,
 				logFieldNewContainersRequired: amountToScale,
-			}).Infof(logMsgNewContainersRequired)
+			}).Debugf(logMsgNewContainersRequired)
 
 		}
 	}
@@ -242,18 +252,40 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 }
 
 func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
+	lastScaleDownTime := cp.status.lastScaleDown
+	nextScaleDownTime := lastScaleDownTime.Add(time.Duration(cp.settings.ScaleDownDelay) * time.Second)
+	currentTime := time.Now()
+
+	cp.logger.WithFields(logrus.Fields{
+		logFieldLastScaleDownTime: lastScaleDownTime,
+		logFieldNextScaleDownTime: nextScaleDownTime,
+		logFieldCurrentTime:       currentTime,
+	}).Debugf(logMsgScaleDownStatus)
+
+	// only consider scaling down if necessary
+	if (cp.status.lastScaleDown.IsZero()) || (currentTime.Before(nextScaleDownTime)) {
+		return nil
+	}
+
 	amountToScale := 0
 	cp.status.Lock()
 	{
 		if !cp.status.isScaling {
 			cp.status.isScaling = true
 			amountToScale = getOldContainersNoLongerRequired(len(cp.status.usedContainers), cp.settings.TargetFreeSize)
+			cp.logger.WithFields(logrus.Fields{
+				logFieldUsedPool:                 len(cp.status.usedContainers),
+				logFieldTargetFreePool:           cp.settings.TargetFreeSize,
+				logFieldOldContainersNotRequired: amountToScale,
+			}).Debugf(logMsgOldContainersNotRequired)
+
 		}
 	}
 	cp.status.Unlock()
 
 	if amountToScale > 0 {
 		errors = cp.removeContainersFromPool(amountToScale)
+		cp.status.lastScaleDown = time.Now()
 	}
 
 	cp.status.Lock()
@@ -321,7 +353,7 @@ func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *c
 	cp.scaleDownPoolIfRequired()
 }
 
-func ConnectClientToContainer(c *cntr.Container) (error) {
+func ConnectClientToContainer(c *cntr.Container) error {
 	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
 	if err != nil {
 		return err

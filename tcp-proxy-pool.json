@@ -9,7 +9,8 @@
   "Pool": {
     "InitialSize": 15,
     "MaximumSize": 25,
-    "TargetFreeSize": 5
+    "TargetFreeSize": 5,
+    "ScaleDownDelay": 1
   },
   "Monitor": {
     "Address": "192.168.64.30:30102",
