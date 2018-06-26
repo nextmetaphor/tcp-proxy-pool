@@ -188,7 +188,7 @@ func Test_InitialisePool(t *testing.T) {
 	tcm := TestIncrementContainerManager{}
 
 	t.Run("PoolSizeOf0", func(t *testing.T) {
-		s := Settings{InitialSize: 0}
+		s := Settings{InitialSize: 0, MaximumSize:10}
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
@@ -196,7 +196,7 @@ func Test_InitialisePool(t *testing.T) {
 	})
 
 	t.Run("PoolSizeOf1", func(t *testing.T) {
-		s := Settings{InitialSize: 1}
+		s := Settings{InitialSize: 1, MaximumSize:10}
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
@@ -205,7 +205,7 @@ func Test_InitialisePool(t *testing.T) {
 
 	t.Run("PoolSizeOf10", func(t *testing.T) {
 		h.Reset()
-		s := Settings{InitialSize: 10}
+		s := Settings{InitialSize: 10, MaximumSize:10}
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Nil(t, err)
@@ -219,7 +219,7 @@ func Test_InitialisePool(t *testing.T) {
 
 	t.Run("ErrorCreatingContainer", func(t *testing.T) {
 		h.Reset()
-		s := Settings{InitialSize: 3}
+		s := Settings{InitialSize: 3, MaximumSize: 10}
 		cp, _ := CreateContainerPool(TestErrContainerManager{}, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Equal(t, []error{errors.New(errorInitialiseError), errors.New(errorInitialiseError), errors.New(errorInitialiseError)}, err)
