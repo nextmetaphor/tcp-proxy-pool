@@ -8,9 +8,14 @@ import (
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrpool"
+	"github.com/sirupsen/logrus"
 )
 
 const (
+	logMsgErrorAssigningContainer = "cannot assign container"
+
+	logFieldError = "error"
+
 	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
 	logErrorCreatingListener    = "Error creating customTLSListener"
 	logErrorAcceptingConnection = "Error accepting connection"
@@ -19,8 +24,8 @@ const (
 	logErrorLoadingCertificates = "Error loading certificates"
 	logErrorServerConnNotTCP    = "Error: server connection not TCP"
 	logErrorClientConnNotTCP    = "Error: client connection not TCP"
-	logErrorAssigningContainer  = "Error: cannot assign container"
-	logErrorProxyingConnection  = "Error proxying connection"
+
+	logErrorProxyingConnection = "Error proxying connection"
 )
 
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
@@ -85,7 +90,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 	}
 
 	if err != nil {
-		ctx.Logger.Warn(logErrorAssigningContainer, err)
+		ctx.Logger.WithFields(logrus.Fields{logFieldError: err}).Debug(logMsgErrorAssigningContainer)
 		// TODO - check for errors
 		serverConn.Close()
 		return
