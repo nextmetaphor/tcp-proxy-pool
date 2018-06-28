@@ -112,18 +112,21 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error)
 
 		cp.status.Lock()
 		{
-			// check that if at this time pool hasn't changed - if so, destroy the container
+			// there is a chance that the number of used containers in the pool has changed which would mean that
+			// we'd exceed the maximum size of the pool by adding our new container to it.
+			// now we've got the lock, check if this is the case, and destroy the container if necessary
 			if len(cp.containers) < cp.settings.MaximumSize {
 				cp.status.unusedContainers[c.ExternalID] = c
 				cp.containers[c.ExternalID] = c
 			} else {
-				// TODO errors?
-				cp.DestroyContainer(c)
+				err := cp.DestroyContainer(c)
+				if err != nil {
+					errors = append(errors, err)
+				}
 			}
 
 		}
 		cp.status.Unlock()
-
 	}
 
 	return errors
