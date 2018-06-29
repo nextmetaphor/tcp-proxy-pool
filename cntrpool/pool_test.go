@@ -304,3 +304,51 @@ func Test_GetOldContainersNoLongerRequired(t *testing.T) {
 		assert.Equal(t, 3, i)
 	})
 }
+
+func Test_AddContainersToPool(t *testing.T) {
+	l, _ := test.NewNullLogger()
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
+	tcm := TestIncrementContainerManager{}
+	s := Settings{InitialSize: 0, MaximumSize: 10}
+
+	t.Run("AddZeroContainers", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		errors := cp.addContainersToPool(0)
+		assert.Nil(t, errors)
+		assert.Equal(t, 0, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 0, len(cp.status.unusedContainers))
+	})
+
+	t.Run("AddSingleContainer", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		errors := cp.addContainersToPool(1)
+		assert.Nil(t, errors)
+		assert.Equal(t, 1, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 1, len(cp.status.unusedContainers))
+	})
+
+	t.Run("AddMultipleContainers", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		errors := cp.addContainersToPool(9)
+		assert.Nil(t, errors)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+	})
+
+	t.Run("AddMultipleErroringContainers", func(t *testing.T) {
+		tcm := TestErrContainerManager{}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		errors := cp.addContainersToPool(9)
+		assert.NotNil(t, errors)
+		assert.Equal(t, 9, len(errors))
+		for _, e:= range errors {
+			assert.Equal(t, errorInitialiseError, e.Error())
+		}
+		assert.Equal(t, 0, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 0, len(cp.status.unusedContainers))
+	})
+}

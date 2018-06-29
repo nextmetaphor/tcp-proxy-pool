@@ -101,12 +101,12 @@ func (cp *ContainerPool) InitialisePool() (errors []error) {
 	return cp.addContainersToPool(cp.settings.InitialSize)
 }
 
-func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error) {
+func (cp *ContainerPool) addContainersToPool(numContainers int) (e []error) {
 	// TODO obvs better to create containers in parallel
 	for i := 0; i < numContainers; i++ {
 		c, err := cp.CreateContainer()
 		if err != nil {
-			errors = append(errors, err)
+			e = append(e, err)
 			continue
 		}
 
@@ -121,7 +121,7 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error)
 			} else {
 				err := cp.DestroyContainer(c)
 				if err != nil {
-					errors = append(errors, err)
+					e = append(e, err)
 				}
 			}
 
@@ -129,7 +129,7 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (errors []error)
 		cp.status.Unlock()
 	}
 
-	return errors
+	return e
 }
 
 func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []error) {
