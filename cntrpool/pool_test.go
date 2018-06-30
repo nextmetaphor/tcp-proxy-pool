@@ -13,6 +13,7 @@ import (
 
 const (
 	errorInitialiseError = "some error"
+	errorDestroyContainer = "error destroying container"
 )
 
 type (
@@ -22,7 +23,9 @@ type (
 
 	TestIncrementContainerManager struct{}
 
-	TestErrContainerManager struct{}
+	TestCreateErrContainerManager struct{}
+
+	TestDestroyErrContainerManager struct{}
 )
 
 var (
@@ -66,13 +69,22 @@ func (cm TestIncrementContainerManager) DestroyContainer(externalID string) erro
 	return nil
 }
 
-func (cm TestErrContainerManager) CreateContainer() (*cntr.Container, error) {
+func (cm TestCreateErrContainerManager) CreateContainer() (*cntr.Container, error) {
 	return nil, errors.New(errorInitialiseError)
 }
 
-func (cm TestErrContainerManager) DestroyContainer(externalID string) error {
-	return errors.New(errorInitialiseError)
+func (cm TestCreateErrContainerManager) DestroyContainer(externalID string) error {
+	return nil
 }
+
+func (cm TestDestroyErrContainerManager) CreateContainer() (*cntr.Container, error) {
+	return testContainer42, nil
+}
+
+func (cm TestDestroyErrContainerManager) DestroyContainer(externalID string) error {
+	return errors.New(errorDestroyContainer)
+}
+
 
 func Test_CreateContainer(t *testing.T) {
 	logger, _ := test.NewNullLogger()
@@ -220,7 +232,7 @@ func Test_InitialisePool(t *testing.T) {
 	t.Run("ErrorCreatingContainer", func(t *testing.T) {
 		h.Reset()
 		s := Settings{InitialSize: 3, MaximumSize: 10}
-		cp, _ := CreateContainerPool(TestErrContainerManager{}, s, l, *m)
+		cp, _ := CreateContainerPool(TestCreateErrContainerManager{}, s, l, *m)
 		err := cp.InitialisePool()
 		assert.Equal(t, []error{errors.New(errorInitialiseError), errors.New(errorInitialiseError), errors.New(errorInitialiseError)}, err)
 		assert.Equal(t, 0, len(cp.containers))
@@ -338,8 +350,8 @@ func Test_AddContainersToPool(t *testing.T) {
 		assert.Equal(t, 9, len(cp.status.unusedContainers))
 	})
 
-	t.Run("AddMultipleErroringContainers", func(t *testing.T) {
-		tcm := TestErrContainerManager{}
+	t.Run("AddMultipleCreateErroringContainers", func(t *testing.T) {
+		tcm := TestCreateErrContainerManager{}
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		errors := cp.addContainersToPool(9)
 		assert.NotNil(t, errors)
@@ -351,4 +363,20 @@ func Test_AddContainersToPool(t *testing.T) {
 		assert.Equal(t, 0, len(cp.status.usedContainers))
 		assert.Equal(t, 0, len(cp.status.unusedContainers))
 	})
+
+	t.Run("AddMultipleDestroyErroringContainers", func(t *testing.T) {
+		tcm := TestDestroyErrContainerManager{}
+		s := Settings{InitialSize: 0, MaximumSize: 0}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		errors := cp.addContainersToPool(9)
+		assert.NotNil(t, errors)
+		assert.Equal(t, 9, len(errors))
+		for _, e:= range errors {
+			assert.Equal(t, errorDestroyContainer, e.Error())
+		}
+		assert.Equal(t, 0, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 0, len(cp.status.unusedContainers))
+	})
+
 }
