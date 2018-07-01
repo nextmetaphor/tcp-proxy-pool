@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	errorInitialiseError = "some error"
+	errorInitialiseError  = "some error"
 	errorDestroyContainer = "error destroying container"
 )
 
@@ -78,13 +78,13 @@ func (cm TestCreateErrContainerManager) DestroyContainer(externalID string) erro
 }
 
 func (cm TestDestroyErrContainerManager) CreateContainer() (*cntr.Container, error) {
-	return testContainer42, nil
+	nextContainerID++
+	return &cntr.Container{ExternalID: strconv.Itoa(nextContainerID)}, nil
 }
 
 func (cm TestDestroyErrContainerManager) DestroyContainer(externalID string) error {
 	return errors.New(errorDestroyContainer)
 }
-
 
 func Test_CreateContainer(t *testing.T) {
 	logger, _ := test.NewNullLogger()
@@ -356,7 +356,7 @@ func Test_AddContainersToPool(t *testing.T) {
 		errors := cp.addContainersToPool(9)
 		assert.NotNil(t, errors)
 		assert.Equal(t, 9, len(errors))
-		for _, e:= range errors {
+		for _, e := range errors {
 			assert.Equal(t, errorInitialiseError, e.Error())
 		}
 		assert.Equal(t, 0, len(cp.containers))
@@ -371,12 +371,113 @@ func Test_AddContainersToPool(t *testing.T) {
 		errors := cp.addContainersToPool(9)
 		assert.NotNil(t, errors)
 		assert.Equal(t, 9, len(errors))
-		for _, e:= range errors {
+		for _, e := range errors {
 			assert.Equal(t, errorDestroyContainer, e.Error())
 		}
 		assert.Equal(t, 0, len(cp.containers))
 		assert.Equal(t, 0, len(cp.status.usedContainers))
 		assert.Equal(t, 0, len(cp.status.unusedContainers))
 	})
+}
 
+func Test_RemoveContainersFromPool(t *testing.T) {
+	l, _ := test.NewNullLogger()
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
+	tcm := TestIncrementContainerManager{}
+	s := Settings{InitialSize: 0, MaximumSize: 10}
+
+	t.Run("RemoveZeroContainers", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+
+		// First add several containers and check they are created as expected
+		errors := cp.addContainersToPool(9)
+		assert.Nil(t, errors)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+
+		err := cp.removeContainersFromPool(0)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+		assert.Nil(t, err)
+	})
+
+	t.Run("RemoveSingleContainer", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+
+		// First add several containers and check they are created as expected
+		errors := cp.addContainersToPool(9)
+		assert.Nil(t, errors)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+
+		err := cp.removeContainersFromPool(1)
+		assert.Equal(t, 8, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 8, len(cp.status.unusedContainers))
+		assert.Nil(t, err)
+	})
+
+	t.Run("RemoveMultipleContainers", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+
+		// First add several containers and check they are created as expected
+		errors := cp.addContainersToPool(9)
+		assert.Nil(t, errors)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+
+		err := cp.removeContainersFromPool(5)
+		assert.Equal(t, 4, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 4, len(cp.status.unusedContainers))
+		assert.Nil(t, err)
+	})
+
+	t.Run("RemoveMultipleDestroyErroringContainers", func(t *testing.T) {
+		tcm := TestDestroyErrContainerManager{}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+
+		// First add several containers and check they are created as expected
+		errors := cp.addContainersToPool(9)
+		assert.Nil(t, errors)
+		assert.Equal(t, 9, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 9, len(cp.status.unusedContainers))
+
+		err := cp.removeContainersFromPool(5)
+		assert.Equal(t, 4, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 4, len(cp.status.unusedContainers))
+		assert.NotNil(t, err)
+		assert.Equal(t, 5, len(err))
+		for _, e := range errors {
+			assert.Equal(t, errorDestroyContainer, e.Error())
+		}
+	})
+
+	t.Run("RemoveSingleContainerFromUsed", func(t *testing.T) {
+		tcm := Test42ContainerManager{}
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+
+		// First add container and check it is created as expected
+		errors := cp.addContainersToPool(1)
+
+		//this situation should never occur under normal operation
+		cp.status.usedContainers["42"] = cp.status.usedContainers["42"]
+
+		assert.Nil(t, errors)
+		assert.Equal(t, 1, len(cp.containers))
+		assert.Equal(t, 1, len(cp.status.usedContainers))
+		assert.Equal(t, 1, len(cp.status.unusedContainers))
+
+		err := cp.removeContainersFromPool(1)
+		assert.Equal(t, 0, len(cp.containers))
+		assert.Equal(t, 0, len(cp.status.usedContainers))
+		assert.Equal(t, 0, len(cp.status.unusedContainers))
+		assert.Nil(t, err)
+	})
 }

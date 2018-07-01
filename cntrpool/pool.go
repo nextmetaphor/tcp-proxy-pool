@@ -138,6 +138,10 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 	cp.status.Lock()
 	{
 		for cID, c := range cp.status.unusedContainers {
+			if len(containersToRemove) >= numContainers {
+				break
+			}
+
 			containersToRemove[cID] = c
 
 			delete(cp.status.unusedContainers, cID)
@@ -145,10 +149,6 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 
 			// shouldn't be possible but just in case...
 			delete(cp.status.usedContainers, cID)
-
-			if len(containersToRemove) >= numContainers {
-				break
-			}
 		}
 	}
 	cp.status.Unlock()
@@ -156,7 +156,10 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 	// at this point these containers are no longer referenced from the pool so can be destroyed
 	// without a lock
 	for _, c := range containersToRemove {
-		errors = append(errors, cp.DestroyContainer(c))
+		e := cp.DestroyContainer(c)
+		if e != nil {
+			errors = append(errors, e)
+		}
 	}
 
 	return errors
