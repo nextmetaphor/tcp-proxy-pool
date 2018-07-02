@@ -4,13 +4,13 @@ import (
 	"errors"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
-	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/nextmetaphor/tcp-proxy-pool/monitor"
 	"github.com/sirupsen/logrus"
 	"net"
 	"strconv"
 	"sync"
 	"time"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
@@ -18,6 +18,7 @@ const (
 	logMsgDestroyedContainer       = "destroyed container"
 	logMsgNewContainersRequired    = "calculating new containers required"
 	logMsgOldContainersNotRequired = "calculating old containers not required"
+	logMsgAlreadyScaling           = "already scaling; not considering scale-up event"
 	logMsgScaleDownStatus          = "scale down status"
 
 	logFieldContainerID              = "container-id"
@@ -228,30 +229,29 @@ func getOldContainersNoLongerRequired(freePool, targetFreePool int) (numContaine
 func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 	amountToScale := 0
 	cp.status.Lock()
-	{
-		if !cp.status.isScaling {
-			cp.status.isScaling = true
-			amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
-			cp.logger.WithFields(logrus.Fields{
-				logFieldSizePool:              len(cp.containers),
-				logFieldMaxSizePool:           cp.settings.MaximumSize,
-				logFieldFreePool:              len(cp.status.unusedContainers),
-				logFieldTargetFreePool:        cp.settings.TargetFreeSize,
-				logFieldNewContainersRequired: amountToScale,
-			}).Debugf(logMsgNewContainersRequired)
-
-		}
+	if cp.status.isScaling {
+		cp.logger.Debug(logMsgAlreadyScaling)
+		cp.status.Unlock()
+		return errors
+	} else {
+		cp.status.isScaling = true
+		amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
+		cp.logger.WithFields(logrus.Fields{
+			logFieldSizePool:              len(cp.containers),
+			logFieldMaxSizePool:           cp.settings.MaximumSize,
+			logFieldFreePool:              len(cp.status.unusedContainers),
+			logFieldTargetFreePool:        cp.settings.TargetFreeSize,
+			logFieldNewContainersRequired: amountToScale,
+		}).Debugf(logMsgNewContainersRequired)
+		cp.status.Unlock()
 	}
-	cp.status.Unlock()
 
 	if amountToScale > 0 {
 		errors = cp.addContainersToPool(amountToScale)
 	}
 
 	cp.status.Lock()
-	{
-		cp.status.isScaling = false
-	}
+	cp.status.isScaling = false
 	cp.status.Unlock()
 
 	return errors

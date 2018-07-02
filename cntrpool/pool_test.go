@@ -481,3 +481,24 @@ func Test_RemoveContainersFromPool(t *testing.T) {
 		assert.Nil(t, err)
 	})
 }
+
+func Test_scaleUpPoolIfRequired(t *testing.T) {
+	l, h := test.NewNullLogger()
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
+	tcm := TestIncrementContainerManager{}
+	s := Settings{InitialSize: 0, MaximumSize: 10}
+
+	t.Run("AlreadyScaling", func(t *testing.T) {
+		cp, _ := CreateContainerPool(tcm, s, l, *m)
+		cp.status.isScaling = true
+
+		assert.Equal(t, len(cp.containers), 0)
+		err := cp.scaleUpPoolIfRequired()
+		assert.Nil(t, err)
+		assert.Equal(t, true, cp.status.isScaling)
+
+		assert.Equal(t, logrus.DebugLevel, l.Level)
+		assert.Contains(t, logMsgAlreadyScaling, h.LastEntry().Message)
+		assert.Equal(t, 1, len(h.AllEntries()))
+	})
+}
