@@ -88,6 +88,7 @@ func (cm TestDestroyErrContainerManager) DestroyContainer(externalID string) err
 
 func Test_CreateContainer(t *testing.T) {
 	logger, _ := test.NewNullLogger()
+	logger.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, logger)
 
 	tcm := Test42ContainerManager{}
@@ -167,6 +168,7 @@ func Test_DestroyContainer(t *testing.T) {
 
 func Test_CreateContainerPool(t *testing.T) {
 	l, _ := test.NewNullLogger()
+	l.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
 	tcm := Test42ContainerManager{}
 	s := Settings{}
@@ -196,6 +198,7 @@ func Test_CreateContainerPool(t *testing.T) {
 
 func Test_InitialisePool(t *testing.T) {
 	l, h := test.NewNullLogger()
+	l.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
 	tcm := TestIncrementContainerManager{}
 
@@ -319,6 +322,7 @@ func Test_GetOldContainersNoLongerRequired(t *testing.T) {
 
 func Test_AddContainersToPool(t *testing.T) {
 	l, _ := test.NewNullLogger()
+	l.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
 	tcm := TestIncrementContainerManager{}
 	s := Settings{InitialSize: 0, MaximumSize: 10}
@@ -382,6 +386,7 @@ func Test_AddContainersToPool(t *testing.T) {
 
 func Test_RemoveContainersFromPool(t *testing.T) {
 	l, _ := test.NewNullLogger()
+	l.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
 	tcm := TestIncrementContainerManager{}
 	s := Settings{InitialSize: 0, MaximumSize: 10}
@@ -484,11 +489,13 @@ func Test_RemoveContainersFromPool(t *testing.T) {
 
 func Test_scaleUpPoolIfRequired(t *testing.T) {
 	l, h := test.NewNullLogger()
+	l.Level = logrus.DebugLevel
 	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, l)
 	tcm := TestIncrementContainerManager{}
 	s := Settings{InitialSize: 0, MaximumSize: 10}
 
 	t.Run("AlreadyScaling", func(t *testing.T) {
+		h.Reset()
 		cp, _ := CreateContainerPool(tcm, s, l, *m)
 		cp.status.isScaling = true
 
@@ -498,7 +505,7 @@ func Test_scaleUpPoolIfRequired(t *testing.T) {
 		assert.Equal(t, true, cp.status.isScaling)
 
 		assert.Equal(t, logrus.DebugLevel, l.Level)
-		assert.Contains(t, logMsgAlreadyScaling, h.LastEntry().Message)
 		assert.Equal(t, 1, len(h.AllEntries()))
+		assert.Contains(t, logMsgAlreadyScaling, h.LastEntry().Message)
 	})
 }
