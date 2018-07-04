@@ -228,10 +228,10 @@ func getOldContainersNoLongerRequired(freePool, targetFreePool int) (numContaine
 // pool should it be required.
 func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 	amountToScale := 0
-	cp.status.Lock()
+	cp.status.RLock()
 	if cp.status.isScaling {
 		cp.logger.Debug(logMsgAlreadyScaling)
-		cp.status.Unlock()
+		cp.status.RUnlock()
 		return errors
 	} else {
 		cp.status.isScaling = true
@@ -243,16 +243,16 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 			logFieldTargetFreePool:        cp.settings.TargetFreeSize,
 			logFieldNewContainersRequired: amountToScale,
 		}).Debugf(logMsgNewContainersRequired)
-		cp.status.Unlock()
+		cp.status.RUnlock()
 	}
 
 	if amountToScale > 0 {
 		errors = cp.addContainersToPool(amountToScale)
 	}
 
-	cp.status.Lock()
+	cp.status.RLock()
 	cp.status.isScaling = false
-	cp.status.Unlock()
+	cp.status.RUnlock()
 
 	return errors
 }
@@ -274,7 +274,7 @@ func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
 	}
 
 	amountToScale := 0
-	cp.status.Lock()
+	cp.status.RLock()
 	{
 		if !cp.status.isScaling {
 			cp.status.isScaling = true
@@ -287,18 +287,16 @@ func (cp *ContainerPool) scaleDownPoolIfRequired() (errors []error) {
 
 		}
 	}
-	cp.status.Unlock()
+	cp.status.RUnlock()
 
 	if amountToScale > 0 {
 		errors = cp.removeContainersFromPool(amountToScale)
 		cp.status.lastScaleDown = time.Now()
 	}
 
-	cp.status.Lock()
-	{
-		cp.status.isScaling = false
-	}
-	cp.status.Unlock()
+	cp.status.RLock()
+	cp.status.isScaling = false
+	cp.status.RUnlock()
 
 	return errors
 }
