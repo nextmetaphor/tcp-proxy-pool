@@ -44,6 +44,7 @@ const (
 )
 
 type (
+	// Settings
 	Settings struct {
 		InitialSize    int
 		MaximumSize    int
@@ -51,8 +52,11 @@ type (
 		ScaleDownDelay int
 	}
 
+	// containerStatus is a synchronised struct that is used to provide maps of used and unused containers that
+	// can be iterated over.
 	containerStatus struct {
 		sync.RWMutex
+
 		isScaling     bool
 		lastScaleDown time.Time
 
@@ -61,7 +65,8 @@ type (
 	}
 
 	ContainerPool struct {
-		// master map of all containers - do not iterate over this, it is not synchronised, use the status field
+		// master map of all containers - DO NOT iterate over this, it is not synchronised, use the status field to
+		// access the usedContainers and unusedContainers for this purpose instead.
 		containers map[string]*cntr.Container
 
 		status containerStatus
