@@ -472,7 +472,7 @@ func Test_RemoveContainersFromPool(t *testing.T) {
 		errors := cp.addContainersToPool(1)
 
 		//this situation should never occur under normal operation
-		cp.status.usedContainers["42"] = cp.status.usedContainers["42"]
+		cp.status.usedContainers["42"] = cp.containers["42"]
 
 		assert.Nil(t, errors)
 		assert.Equal(t, 1, len(cp.containers))

@@ -233,18 +233,18 @@ func (cp *ContainerPool) scaleUpPoolIfRequired() (errors []error) {
 		cp.logger.Debug(logMsgAlreadyScaling)
 		cp.status.RUnlock()
 		return errors
-	} else {
-		cp.status.isScaling = true
-		amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
-		cp.logger.WithFields(logrus.Fields{
-			logFieldSizePool:              len(cp.containers),
-			logFieldMaxSizePool:           cp.settings.MaximumSize,
-			logFieldFreePool:              len(cp.status.unusedContainers),
-			logFieldTargetFreePool:        cp.settings.TargetFreeSize,
-			logFieldNewContainersRequired: amountToScale,
-		}).Debugf(logMsgNewContainersRequired)
-		cp.status.RUnlock()
 	}
+
+	cp.status.isScaling = true
+	amountToScale = getNewContainersRequired(len(cp.containers), cp.settings.MaximumSize, len(cp.status.unusedContainers), cp.settings.TargetFreeSize)
+	cp.logger.WithFields(logrus.Fields{
+		logFieldSizePool:              len(cp.containers),
+		logFieldMaxSizePool:           cp.settings.MaximumSize,
+		logFieldFreePool:              len(cp.status.unusedContainers),
+		logFieldTargetFreePool:        cp.settings.TargetFreeSize,
+		logFieldNewContainersRequired: amountToScale,
+	}).Debugf(logMsgNewContainersRequired)
+	cp.status.RUnlock()
 
 	if amountToScale > 0 {
 		errors = cp.addContainersToPool(amountToScale)
