@@ -9,53 +9,60 @@ const (
 	cAppName            = "tcp-proxy-pool"
 	cAppNameDescription = "TODO"
 
+	// HostNameFlag is the command-line flag which allows the listen host to be specified
 	HostNameFlag          = "hostname"
+	// PortNameFlag is the command-line flag which allows the listen port to be specified
 	PortNameFlag          = "port"
+	// CertFileFlag is the command-line flag which allows the TLS certificate file is specified 
 	CertFileFlag          = "certFile"
+	// KeyFileFlag is the command-line flag which allows the TLS key file to be specified
 	KeyFileFlag           = "keyFile"
+	// TransportProtocolFlag is the command-line flag which allows the TCP transport to be specified
 	TransportProtocolFlag = "transport"
+	// LogLevelFlag is the command-line flag which allows the log level to be specified
 	LogLevelFlag          = "logLevel"
 )
 
 type (
-	CommandLineFlag struct {
+	commandLineFlag struct {
 		ShortName    rune
 		Help         string
 		DefaultValue string
 		FlagValue    *string
 	}
 
-	CommandLineFlags map[string]*CommandLineFlag
+	commandLineFlags map[string]*commandLineFlag
 )
 
-func CreateFlags() CommandLineFlags {
-	return CommandLineFlags{
-		HostNameFlag: &CommandLineFlag{
+// CreateFlags creates the appropriate struct representing the application command line arguments
+func CreateFlags() commandLineFlags {
+	return commandLineFlags{
+		HostNameFlag: &commandLineFlag{
 			ShortName:    'h',
 			DefaultValue: "",
 			Help:         "hostname to bind to",
 		},
-		PortNameFlag: &CommandLineFlag{
+		PortNameFlag: &commandLineFlag{
 			ShortName:    'p',
 			DefaultValue: "8443",
 			Help:         "port to bind to",
 		},
-		CertFileFlag: &CommandLineFlag{
+		CertFileFlag: &commandLineFlag{
 			ShortName:    'c',
 			DefaultValue: cAppName + ".crt",
 			Help:         "TLS certificate file",
 		},
-		KeyFileFlag: &CommandLineFlag{
+		KeyFileFlag: &commandLineFlag{
 			ShortName:    'k',
 			DefaultValue: cAppName + ".key",
 			Help:         "TLS key file",
 		},
-		TransportProtocolFlag: &CommandLineFlag{
+		TransportProtocolFlag: &commandLineFlag{
 			ShortName:    't',
 			DefaultValue: "tcp4",
 			Help:         "transport protocol to use",
 		},
-		LogLevelFlag: &CommandLineFlag{
+		LogLevelFlag: &commandLineFlag{
 			ShortName:    'l',
 			DefaultValue: log.LevelWarn,
 			Help:         "log level: debug, info, warn or error",
@@ -63,7 +70,8 @@ func CreateFlags() CommandLineFlags {
 	}
 }
 
-func (flags CommandLineFlags) SetFlagsWithArguments(arguments []string) {
+// SetFlagsWithArguments sets the value of the flags struct with the actual command-line arguments
+func (flags commandLineFlags) SetFlagsWithArguments(arguments []string) {
 	app := kingpin.New(cAppName, cAppNameDescription)
 	for flagName := range flags {
 		flag := flags[flagName]
