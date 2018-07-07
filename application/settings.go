@@ -9,6 +9,7 @@ import (
 )
 
 type (
+	// ListenerSettings represents the command-line settings that can additionally be passed
 	ListenerSettings struct {
 		Host      string
 		Port      string
@@ -17,6 +18,8 @@ type (
 		KeyFile   string
 	}
 
+	// Settings represents the various different parameters that can be configured using an appropriate configuration
+	// file
 	Settings struct {
 		Listener ListenerSettings
 		Pool     cntrpool.Settings
@@ -25,6 +28,8 @@ type (
 	}
 )
 
+// LoadSettings loads the settings file from the pathname provided. It returns the pointer of a populated Settings
+// struct if this file is valid; a nil pointer and the error that occurred if this is not the case
 func LoadSettings(file string) (settings *Settings, err error) {
 	config, err := os.Open(file)
 	defer config.Close()
