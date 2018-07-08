@@ -5,9 +5,12 @@ import (
 )
 
 const (
+	// LevelError specifies the log level for error logging
 	LevelError = "error"
-	LevelWarn  = "warn"
-	LevelDebug = "debug"
+	// LevelWarning specifies the log level for warning logging
+	LevelWarning = "warn"
+	// LevelDebug specifies the log level for debug logging
+	LevelDebug   = "debug"
 
 	logFieldErrorCause = "rootError"
 )
@@ -20,11 +23,12 @@ func init() {
 	//logger.Formatter = &logrus.JSONFormatter{}
 }
 
+// Get returns a pointer to a logger with the specified level
 func Get(level string) *logrus.Logger {
 	switch level {
 	case LevelError:
 		logger.Level = logrus.ErrorLevel
-	case LevelWarn:
+	case LevelWarning:
 		logger.Level = logrus.WarnLevel
 	case LevelDebug:
 		logger.Level = logrus.DebugLevel
@@ -34,6 +38,7 @@ func Get(level string) *logrus.Logger {
 	return logger
 }
 
+// Error is a helper function which logs an error message with the specified logger
 func Error(description string, err error, logger *logrus.Logger) {
 	if logger != nil {
 		logger.WithFields(logrus.Fields{

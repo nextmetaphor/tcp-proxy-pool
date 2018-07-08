@@ -64,7 +64,7 @@ func CreateFlags() commandLineFlags {
 		},
 		LogLevelFlag: &commandLineFlag{
 			ShortName:    'l',
-			DefaultValue: log.LevelWarn,
+			DefaultValue: log.LevelWarning,
 			Help:         "log level: debug, info, warn or error",
 		},
 	}

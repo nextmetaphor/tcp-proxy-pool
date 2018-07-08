@@ -13,7 +13,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Warn Level", func(t *testing.T) {
-		assert.Equal(t, Get(LevelWarn).Level, logrus.WarnLevel, "level incorrect")
+		assert.Equal(t, Get(LevelWarning).Level, logrus.WarnLevel, "level incorrect")
 	})
 
 	t.Run("Debug Level", func(t *testing.T) {
