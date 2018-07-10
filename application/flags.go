@@ -31,12 +31,13 @@ type (
 		FlagValue    *string
 	}
 
-	commandLineFlags map[string]*commandLineFlag
+	// CommandLineFlags contains a map of commandLineFlag structs, indexed by the long flag name
+	CommandLineFlags map[string]*commandLineFlag
 )
 
 // CreateFlags creates the appropriate struct representing the application command line arguments
-func CreateFlags() commandLineFlags {
-	return commandLineFlags{
+func CreateFlags() CommandLineFlags {
+	return CommandLineFlags{
 		HostNameFlag: &commandLineFlag{
 			ShortName:    'h',
 			DefaultValue: "",
@@ -71,7 +72,7 @@ func CreateFlags() commandLineFlags {
 }
 
 // SetFlagsWithArguments sets the value of the flags struct with the actual command-line arguments
-func (flags commandLineFlags) SetFlagsWithArguments(arguments []string) {
+func (flags CommandLineFlags) SetFlagsWithArguments(arguments []string) {
 	app := kingpin.New(cAppName, cAppNameDescription)
 	for flagName := range flags {
 		flag := flags[flagName]
