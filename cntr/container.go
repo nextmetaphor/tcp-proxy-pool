@@ -1,22 +1,24 @@
 package cntr
 
 import (
-	"sync"
 	"time"
 	"net"
 )
 
 type (
+	// Container contains the details of a running container within the pool
 	Container struct {
-		sync.RWMutex
+		// ExternalID is the ID of the running container and must be unique within the pool
 		ExternalID            string
-		StartTime             time.Time
-		IPAddress             string
-		Port                  int
-		IsReady               bool
 
-		// IsBeingRemoved is set to true when a container connection is in the process of being removed
-		IsBeingRemoved bool
+		// StartTime holds the time that the container was initially started
+		StartTime             time.Time
+
+		// IPAddress holds the IP address on which the container is running
+		IPAddress             string
+
+		// Port holds the port on which the container is running
+		Port                  int
 
 		// ConnectionFromClient represents the client connection; if this is nil then this container is available
 		ConnectionFromClient  net.Conn
