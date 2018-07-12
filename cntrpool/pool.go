@@ -44,7 +44,8 @@ const (
 )
 
 type (
-	// Settings
+	// Settings represents the various configuration parameters for a connection pool and are typically read
+	// from an external configuration file
 	Settings struct {
 		InitialSize    int
 		MaximumSize    int
@@ -64,6 +65,8 @@ type (
 		unusedContainers map[string]*cntr.Container
 	}
 
+	// ContainerPool represents the internal representation of a connection pool, specifically containing
+	// references to the logging components, monitoring components etc needed
 	ContainerPool struct {
 		// master map of all containers - DO NOT iterate over this, it is not synchronised, use the status field to
 		// access the usedContainers and unusedContainers for this purpose instead.
@@ -103,6 +106,7 @@ func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logg
 	return pool, nil
 }
 
+// InitialisePool simply creates a pool of the specified pool.Settings.InitialSize
 func (cp *ContainerPool) InitialisePool() (errors []error) {
 	return cp.addContainersToPool(cp.settings.InitialSize)
 }
@@ -110,7 +114,7 @@ func (cp *ContainerPool) InitialisePool() (errors []error) {
 func (cp *ContainerPool) addContainersToPool(numContainers int) (e []error) {
 	// TODO obvs better to create containers in parallel
 	for i := 0; i < numContainers; i++ {
-		c, err := cp.CreateContainer()
+		c, err := cp.createContainer()
 		if err != nil {
 			e = append(e, err)
 			continue
@@ -125,7 +129,7 @@ func (cp *ContainerPool) addContainersToPool(numContainers int) (e []error) {
 				cp.status.unusedContainers[c.ExternalID] = c
 				cp.containers[c.ExternalID] = c
 			} else {
-				err := cp.DestroyContainer(c)
+				err := cp.destroyContainer(c)
 				if err != nil {
 					e = append(e, err)
 				}
@@ -162,7 +166,7 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 	// at this point these containers are no longer referenced from the pool so can be destroyed
 	// without a lock
 	for _, c := range containersToRemove {
-		e := cp.DestroyContainer(c)
+		e := cp.destroyContainer(c)
 		if e != nil {
 			errors = append(errors, e)
 		}
@@ -171,11 +175,11 @@ func (cp *ContainerPool) removeContainersFromPool(numContainers int) (errors []e
 	return errors
 }
 
-// CreateContainer creates a new Container, returning a pointer to the container or the error that occurred.
+// createContainer creates a new Container, returning a pointer to the container or the error that occurred.
 // It does not associate it with the connection pool due to locking reasons: we don't want to lock the pool
 // whilst the container is being created. We create the container first; only locking the pool when we want to
 // add the container pointer.
-func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
+func (cp *ContainerPool) createContainer() (c *cntr.Container, err error) {
 	c, err = cp.manager.CreateContainer()
 	if err != nil {
 		log.Error(logErrorCreatingContainer, err, cp.logger)
@@ -191,7 +195,8 @@ func (cp *ContainerPool) CreateContainer() (c *cntr.Container, err error) {
 	return c, nil
 }
 
-func (cp *ContainerPool) DestroyContainer(c *cntr.Container) (err error) {
+// destroyContainer destroys the specified container, returning any error that occurred
+func (cp *ContainerPool) destroyContainer(c *cntr.Container) (err error) {
 	err = cp.manager.DestroyContainer(c.ExternalID)
 
 	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logMsgDestroyedContainer)
@@ -362,6 +367,8 @@ func (cp *ContainerPool) DissociateClientWithContainer(serverConn net.Conn, c *c
 	cp.scaleDownPoolIfRequired()
 }
 
+// ConnectClientToContainer creates a TCP connection to the address + port of the specified container,
+// returning any errors that occurred
 func ConnectClientToContainer(c *cntr.Container) error {
 	conn, err := net.Dial("tcp", c.IPAddress+":"+strconv.Itoa(c.Port))
 	if err != nil {

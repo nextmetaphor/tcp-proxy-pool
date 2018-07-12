@@ -96,7 +96,7 @@ func Test_CreateContainer(t *testing.T) {
 
 	t.Run("EmptyPool", func(t *testing.T) {
 		cp.containers = make(map[string]*cntr.Container)
-		c, err := cp.CreateContainer()
+		c, err := cp.createContainer()
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
 		//assert.Equal(t, 1, len(cp.containers), "pool size incorrect")
@@ -108,7 +108,7 @@ func Test_CreateContainer(t *testing.T) {
 		cp.containers[testContainer1.ExternalID] = testContainer1
 		cp.containers[testContainer2.ExternalID] = testContainer2
 
-		c, err := cp.CreateContainer()
+		c, err := cp.createContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
@@ -126,7 +126,7 @@ func Test_CreateContainer(t *testing.T) {
 		pool.containers[testContainer2.ExternalID] = testContainer2
 		pool.containers[testContainer42.ExternalID] = testContainer42
 
-		c, err := cp.CreateContainer()
+		c, err := cp.createContainer()
 
 		assert.Nil(t, err, "nil error should have been returned")
 		assert.Equal(t, testContainer42, c, "returned container incorrect")
@@ -146,7 +146,7 @@ func Test_CreateContainer(t *testing.T) {
 
 		tcm := TestNilContainerManager{}
 		cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
-		c, err := cp.CreateContainer()
+		c, err := cp.createContainer()
 
 		assert.NotNil(t, err, "error expected")
 		assert.Nil(t, c, "nil container expected")
