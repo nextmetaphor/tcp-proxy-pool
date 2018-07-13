@@ -30,11 +30,15 @@ const (
 )
 
 type (
+	// Settings represents the various configuration parameters for a monitor and are typically read
+	// from an external configuration file
 	Settings struct {
 		Address  string
 		Database string
 	}
 
+	// Client represents the internal representation of a monitor, specifically containing
+	// references to the logging components, monitor client etc needed
 	Client struct {
 		logger   *logrus.Logger
 		settings Settings
@@ -42,6 +46,8 @@ type (
 	}
 )
 
+// CreateMonitor simply creates a pointer to a Client
+// TODO return error
 func CreateMonitor(ms Settings, l *logrus.Logger) *Client {
 	if strings.TrimSpace(ms.Address) == "" {
 		return nil
@@ -90,6 +96,7 @@ func (mon *Client) writePoint(measurementName string, tags map[string]string, fi
 	}
 }
 
+// WriteBytesCopied writes the number of bytes copied to the monitor connection
 func (mon *Client) WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn) {
 	var fields map[string]interface{}
 	var tags map[string]string
@@ -113,6 +120,7 @@ func (mon *Client) WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, ds
 		fields)
 }
 
+// WriteConnectionAccepted writes a point to the monitor to indicate that a connection was accepted
 func (mon *Client) WriteConnectionAccepted(src net.Conn) {
 	go mon.writePoint(
 		measurementConnectionPool,
@@ -123,6 +131,7 @@ func (mon *Client) WriteConnectionAccepted(src net.Conn) {
 		map[string]interface{}{fieldConnectionsAccepted: 1})
 }
 
+// WriteConnectionRejected writes a point to indicate that a connection was rejected
 func (mon *Client) WriteConnectionRejected(src net.Conn) {
 	go mon.writePoint(
 		measurementConnectionPool,
@@ -133,6 +142,7 @@ func (mon *Client) WriteConnectionRejected(src net.Conn) {
 		map[string]interface{}{fieldConnectionsRejected: 1})
 }
 
+// WriteConnectionPoolStats writes a the number of connections in use and the pool size to the monitor
 func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int) {
 	go mon.writePoint(
 		measurementConnectionPool,
