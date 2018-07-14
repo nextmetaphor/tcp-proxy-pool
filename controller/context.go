@@ -8,8 +8,9 @@ import (
 )
 
 type (
+	// Context is a struct representing all the components needed by a listener
 	Context struct {
-		// logger needs to be a pointer due to MutexWrap
+		// Logger needs to be a pointer due to MutexWrap
 		Logger        *logrus.Logger
 		Settings      application.Settings
 		MonitorClient monitor.Client

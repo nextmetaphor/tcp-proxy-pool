@@ -28,6 +28,7 @@ const (
 	logErrorProxyingConnection = "Error proxying connection"
 )
 
+// StartListener is called when the application is ready to start serving connections from the pool
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 	// TODO don't ignore the error
 	cp, _ := cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger, ctx.MonitorClient)
