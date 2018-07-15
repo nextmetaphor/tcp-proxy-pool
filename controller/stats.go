@@ -16,6 +16,7 @@ const (
 	urlMonitor = "/monitor"
 )
 
+// StartStatistics is called when the application is ready to start the statistics service
 func (ctx *Context) StartStatistics() {
 	r := mux.NewRouter()
 	server := &http.Server{
