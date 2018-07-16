@@ -31,6 +31,7 @@ func (l *customTLSListener) Accept() (net.Conn, error) {
 	}, nil
 }
 
+// NewListener creates a net.Listener with TLS config
 func NewListener(inner net.Listener, config *tls.Config) net.Listener {
 	l := new(customTLSListener)
 	l.Listener = inner
@@ -38,6 +39,7 @@ func NewListener(inner net.Listener, config *tls.Config) net.Listener {
 	return l
 }
 
+// Listen calls the net.Listen function returning a net.Listener or any error that occurred
 func Listen(network, laddr string, config *tls.Config) (net.Listener, error) {
 	if config == nil || (len(config.Certificates) == 0 && config.GetCertificate == nil) {
 		return nil, errors.New("tls: neither Certificates nor GetCertificate set in Config")
