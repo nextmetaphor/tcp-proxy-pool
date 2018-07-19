@@ -4,6 +4,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"github.com/sirupsen/logrus/hooks/test"
+	"errors"
 )
 
 func TestGet(t *testing.T) {
@@ -23,4 +25,19 @@ func TestGet(t *testing.T) {
 	t.Run("Default Level", func(t *testing.T) {
 		assert.Equal(t, Get("default").Level, logrus.InfoLevel, "level incorrect")
 	})
+}
+
+func TestError(t *testing.T) {
+	const (
+		errDescription =  "some error"
+		errDetails = "my new error"
+	)
+
+	logger, hook := test.NewNullLogger()
+
+	e := errors.New(errDetails)
+	Error(errDescription, e, logger)
+	assert.Equal(t, 1, len(hook.AllEntries()))
+	assert.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
+	assert.Equal(t, errDescription, hook.LastEntry().Message)
 }
