@@ -9,6 +9,10 @@ import (
 	"net"
 )
 
+var (
+	influxClient client.Client
+)
+
 // CreateMonitor simply creates a pointer to a Client
 // TODO return error
 func CreateMonitor(ms Settings, l *logrus.Logger) *Client {
@@ -22,9 +26,9 @@ func CreateMonitor(ms Settings, l *logrus.Logger) *Client {
 	if err != nil {
 		log.Error(logErrorCreatingMonitorConnection, err, l)
 	}
+	influxClient = monitorClient
 
 	return &Client{
-		Client:   monitorClient,
 		settings: ms,
 		logger:   l,
 	}
@@ -52,8 +56,8 @@ func (mon *Client) writePoint(measurementName string, tags map[string]string, fi
 	}
 	bp.AddPoint(pt)
 
-	if mon.Client != nil {
-		if err := (mon.Client).Write(bp); err != nil {
+	if influxClient != nil {
+		if err := influxClient.Write(bp); err != nil {
 			log.Error(logErrorWritingPoint, err, mon.logger)
 		}
 	}
@@ -115,4 +119,10 @@ func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, conn
 		map[string]interface{}{
 			fieldConnectionsInUse:   connectionsInUse,
 			fieldConnectionPoolSize: connectionPoolSize})
+}
+
+func (mon *Client) CloseMonitorConnection() {
+	if influxClient != nil {
+		influxClient.Close()
+	}
 }

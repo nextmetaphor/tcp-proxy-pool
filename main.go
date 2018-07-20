@@ -38,11 +38,9 @@ func main() {
 
 	// TODO overrride settings with flags
 
-	//// start the monitor service
+	//// start the appropriate monitor service
 	monitorClient := monitor.CreateMonitor(ctx.Settings.Monitor, ctx.Logger)
-	if (monitorClient != nil) && (monitorClient.Client != nil) {
-		defer monitorClient.Client.Close()
-	}
+	defer monitorClient.CloseMonitorConnection()
 	ctx.MonitorClient = *monitorClient
 
 	// start the statistics service

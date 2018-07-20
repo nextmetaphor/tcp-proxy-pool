@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"github.com/influxdata/influxdb/client/v2"
 	"github.com/sirupsen/logrus"
 	"net"
 )
@@ -39,12 +38,12 @@ type (
 	Client struct {
 		logger   *logrus.Logger
 		settings Settings
-		Client   client.Client
 	}
 
 	Monitor interface {
 		WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn)
 		WriteConnectionAccepted(src net.Conn)
 		WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int)
+		CloseMonitorConnection()
 	}
 )
