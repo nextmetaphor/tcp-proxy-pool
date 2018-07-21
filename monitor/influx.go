@@ -121,6 +121,7 @@ func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, conn
 			fieldConnectionPoolSize: connectionPoolSize})
 }
 
+// CloseMonitorConnection simple closes the InfluxDB client when processing is complete
 func (mon *Client) CloseMonitorConnection() {
 	if influxClient != nil {
 		influxClient.Close()

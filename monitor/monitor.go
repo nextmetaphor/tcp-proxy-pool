@@ -40,6 +40,7 @@ type (
 		settings Settings
 	}
 
+	// Monitor should be implemented to write to a time-series database for the various methods required
 	Monitor interface {
 		WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn)
 		WriteConnectionAccepted(src net.Conn)
