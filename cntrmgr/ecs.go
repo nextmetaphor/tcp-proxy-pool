@@ -23,6 +23,8 @@ const (
 )
 
 type (
+	// Settings represents the various configuration parameters for a ECS container manager and are typically read
+	// from an external configuration file
 	Settings struct {
 		Profile                      string
 		Region                       string
@@ -35,6 +37,8 @@ type (
 		MaximumContainerStartTimeSec int
 	}
 
+	// ECS is the receiver struct for the container manager, specifically containing
+	// references to the logging components, settings etc needed
 	ECS struct {
 		Logger     logrus.Logger
 		Conf       Settings
@@ -50,6 +54,8 @@ func strArrToStrPointerArr(strArr []string) []*string {
 	return ps
 }
 
+// InitialiseECSService creates a new AWS config object as per the provided configuration with
+// regards to region and credentials
 func (cm *ECS) InitialiseECSService() (error) {
 	config := &aws.Config{Region: aws.String(cm.Conf.Region)}
 	if cm.Conf.Profile != "" {
@@ -64,6 +70,7 @@ func (cm *ECS) InitialiseECSService() (error) {
 	return nil
 }
 
+// CreateContainer simply creates an ECS containers as per the provided configuration settings
 func (cm *ECS) CreateContainer() (*cntr.Container, error) {
 	runTaskInput := &ecs.RunTaskInput{
 		Cluster:        aws.String(cm.Conf.Cluster),
@@ -136,6 +143,7 @@ func (cm *ECS) CreateContainer() (*cntr.Container, error) {
 	}, nil
 }
 
+// DestroyContainer simply destroys the ECS container identified by the provided ID
 func (cm *ECS) DestroyContainer(externalID string) (error) {
 	// TODO obvs needs implementing
 	return nil
