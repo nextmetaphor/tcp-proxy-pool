@@ -184,7 +184,7 @@ func (cp *ContainerPool) createContainer() (c *cntr.Container, err error) {
 	if err != nil {
 		log.Error(logErrorCreatingContainer, err, cp.logger)
 
-		// TODO - add monitoring here
+		cp.monitor.WriteContainerCreated(1)
 		return c, err
 	}
 	if c == nil {
@@ -201,7 +201,7 @@ func (cp *ContainerPool) destroyContainer(c *cntr.Container) (err error) {
 
 	cp.logger.WithFields(logrus.Fields{logFieldContainerID: c.ExternalID}).Infof(logMsgDestroyedContainer)
 
-	// TODO - add monitoring here
+	cp.monitor.WriteContainerDestroyed(1)
 	return err
 }
 

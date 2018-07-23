@@ -45,6 +45,8 @@ type (
 		WriteBytesCopied(srcIsServer bool, totalBytesCopied int64, dst, src net.Conn)
 		WriteConnectionAccepted(src net.Conn)
 		WriteConnectionPoolStats(src net.Conn, connectionsInUse, connectionPoolSize int)
+		WriteContainerCreated(numContainersCreated int)
+		WriteContainerDestroyed(numContainersDestroyed int)
 		CloseMonitorConnection()
 	}
 )
