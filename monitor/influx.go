@@ -9,6 +9,30 @@ import (
 	"net"
 )
 
+const (
+	logErrorCreatingMonitorBatch      = "Error creating monitoring batch"
+	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
+	logErrorCreatingPoint             = "Error creating point"
+	logErrorWritingPoint              = "Error writing point"
+
+	measurementDataTransfer = "data-transfer"
+	fieldCopiedToServer     = "copied-to-server"
+	fieldCopiedFromServer   = "copied-from-server"
+
+	measurementConnectionPool = "connection-pool"
+	fieldConnectionsAccepted  = "connections-accepted"
+	fieldConnectionsRejected  = "connections-rejected"
+	fieldConnectionsInUse     = "connections-in-use"
+	fieldConnectionPoolSize   = "connection-pool-size"
+
+	measurementContainerPool = "container-pool"
+	fieldContainersCreated   = "container-created"
+	fieldContainersDestroyed = "container-destroyed"
+
+	tagTCPProxyPoolClientConn = "client-conn"
+	tagTCPProxyPoolServerConn = "server-conn"
+)
+
 var (
 	influxClient client.Client
 )
@@ -122,13 +146,20 @@ func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, conn
 }
 
 func (mon *Client) WriteContainerCreated(numContainersCreated int) {
-	// TODO
+	go mon.writePoint(
+		measurementContainerPool,
+		map[string]string{
+		},
+		map[string]interface{}{fieldContainersCreated: numContainersCreated})
 }
 
 func (mon *Client) WriteContainerDestroyed(numContainersDestroyed int) {
-	// TODO
+	go mon.writePoint(
+		measurementContainerPool,
+		map[string]string{
+		},
+		map[string]interface{}{fieldContainersDestroyed: numContainersDestroyed})
 }
-
 
 // CloseMonitorConnection simple closes the InfluxDB client when processing is complete
 func (mon *Client) CloseMonitorConnection() {

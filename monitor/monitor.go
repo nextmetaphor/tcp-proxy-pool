@@ -5,26 +5,6 @@ import (
 	"net"
 )
 
-const (
-	logErrorCreatingMonitorBatch      = "Error creating monitoring batch"
-	logErrorCreatingMonitorConnection = "Error creating monitoring connection"
-	logErrorCreatingPoint             = "Error creating point"
-	logErrorWritingPoint              = "Error writing point"
-
-	measurementDataTransfer = "data-transfer"
-	fieldCopiedToServer     = "copied-to-server"
-	fieldCopiedFromServer   = "copied-from-server"
-
-	measurementConnectionPool = "connection-pool"
-	fieldConnectionsAccepted  = "connections-accepted"
-	fieldConnectionsRejected  = "connections-rejected"
-	fieldConnectionsInUse     = "connections-in-use"
-	fieldConnectionPoolSize   = "connection-pool-size"
-
-	tagTCPProxyPoolClientConn = "client-conn"
-	tagTCPProxyPoolServerConn = "server-conn"
-)
-
 type (
 	// Settings represents the various configuration parameters for a monitor and are typically read
 	// from an external configuration file
