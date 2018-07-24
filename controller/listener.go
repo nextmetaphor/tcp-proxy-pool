@@ -24,14 +24,18 @@ const (
 	logErrorLoadingCertificates = "Error loading certificates"
 	logErrorServerConnNotTCP    = "Error: server connection not TCP"
 	logErrorClientConnNotTCP    = "Error: client connection not TCP"
+	logErrorCreatingContainerPool = "Error creating container pool"
 
 	logErrorProxyingConnection = "Error proxying connection"
 )
 
 // StartListener is called when the application is ready to start serving connections from the pool
 func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
-	// TODO don't ignore the error
-	cp, _ := cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger, ctx.MonitorClient)
+	cp, e := cntrpool.CreateContainerPool(cm, ctx.Settings.Pool, ctx.Logger, ctx.MonitorClient)
+	if e != nil {
+		log.Error(logErrorCreatingContainerPool, e, ctx.Logger)
+		return false
+	}
 
 	// TODO errors?
 	cp.InitialisePool()

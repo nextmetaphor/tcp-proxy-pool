@@ -81,7 +81,8 @@ type (
 	}
 )
 
-// CreateContainerPool creates a connection pool
+// CreateContainerPool creates a container pool; if an error occurs then this is returned together with a nil
+// container pool
 func CreateContainerPool(cm cntrmgr.ContainerManager, s Settings, l *logrus.Logger, m monitor.Client) (pool *ContainerPool, err error) {
 	if cm == nil {
 		return nil, errors.New(errorContainerManagerNil)
