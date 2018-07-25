@@ -4,11 +4,11 @@ import (
 	"net"
 	"io"
 	"crypto/tls"
-	"github.com/nextmetaphor/tcp-proxy-pool/log"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrmgr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntr"
 	"github.com/nextmetaphor/tcp-proxy-pool/cntrpool"
 	"github.com/sirupsen/logrus"
+	"github.com/nextmetaphor/tcp-proxy-pool/log"
 )
 
 const (
@@ -16,15 +16,16 @@ const (
 
 	logFieldError = "error"
 
-	logSecureServerStarting     = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
-	logErrorCreatingListener    = "Error creating customTLSListener"
-	logErrorAcceptingConnection = "Error accepting connection"
-	logErrorCopying             = "Error copying"
-	logErrorClosing             = "Error closing"
-	logErrorLoadingCertificates = "Error loading certificates"
-	logErrorServerConnNotTCP    = "Error: server connection not TCP"
-	logErrorClientConnNotTCP    = "Error: client connection not TCP"
-	logErrorCreatingContainerPool = "Error creating container pool"
+	logSecureServerStarting           = "Server starting on address [%s] and port [%s] with a secure configuration: cert[%s] key[%s]"
+	logErrorCreatingListener          = "Error creating customTLSListener"
+	logErrorAcceptingConnection       = "Error accepting connection"
+	logErrorCopying                   = "Error copying"
+	logErrorClosing                   = "Error closing"
+	logErrorLoadingCertificates       = "Error loading certificates"
+	logErrorServerConnNotTCP          = "Error: server connection not TCP"
+	logErrorClientConnNotTCP          = "Error: client connection not TCP"
+	logErrorCreatingContainerPool     = "Error creating container pool"
+	logErrorInitialisingContainerPool = "Error initialising container pool"
 
 	logErrorProxyingConnection = "Error proxying connection"
 )
@@ -37,8 +38,12 @@ func (ctx *Context) StartListener(cm cntrmgr.ContainerManager) bool {
 		return false
 	}
 
-	// TODO errors?
-	cp.InitialisePool()
+	errs := cp.InitialisePool()
+	if (errs != nil) && len(errs) > 0 {
+		for _, e:= range errs {
+			log.Error(logErrorInitialisingContainerPool, e, ctx.Logger)
+		}
+	}
 
 	ctx.ContainerPool = cp
 	ctx.Logger.Infof(logSecureServerStarting,
