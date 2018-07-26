@@ -101,7 +101,7 @@ func (ctx *Context) clientConnect(serverConn net.Conn) {
 
 	if err != nil {
 		ctx.Logger.WithFields(logrus.Fields{logFieldError: err}).Debug(logMsgErrorAssigningContainer)
-		// TODO - check for errors
+		// we're not going to act on Close errors, so ignore purposefully
 		serverConn.Close()
 		return
 	}
