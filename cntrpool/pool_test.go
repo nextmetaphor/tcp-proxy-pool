@@ -158,12 +158,26 @@ func Test_CreateContainer(t *testing.T) {
 }
 
 func Test_DestroyContainer(t *testing.T) {
-	// TODO
-	//tcm  := Test42ContainerManager{}
-	//logger, _ := test.NewNullLogger()
-	//m := monitor.CreateMonitor(monitor.Settings{Address: "Something"}, logger)
-	//
-	//cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
+	logger, _ := test.NewNullLogger()
+	logger.Level = logrus.DebugLevel
+	m := monitor.CreateMonitor(monitor.Settings{Address: "something"}, logger)
+
+	t.Run("ContainerInPool", func(t *testing.T) {
+		pool := ContainerPool{
+			containers: make(map[string]*cntr.Container),
+		}
+		pool.containers[testContainer1.ExternalID] = testContainer1
+		pool.containers[testContainer2.ExternalID] = testContainer2
+		pool.containers[testContainer42.ExternalID] = testContainer42
+
+		tcm := TestDestroyErrContainerManager{}
+		cp, _ := CreateContainerPool(tcm, Settings{}, logger, *m)
+		err := cp.destroyContainer(pool.containers[testContainer42.ExternalID])
+
+		assert.NotNil(t, err, "error expected")
+		assert.Equal(t, errors.New(errorDestroyContainer), err)
+		assert.Equal(t, 3, len(pool.containers), "pool size incorrect")
+	})
 }
 
 func Test_CreateContainerPool(t *testing.T) {
