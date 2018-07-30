@@ -145,6 +145,7 @@ func (mon *Client) WriteConnectionPoolStats(src net.Conn, connectionsInUse, conn
 			fieldConnectionPoolSize: connectionPoolSize})
 }
 
+// WriteContainerCreated writes the number of connections created to the monitor
 func (mon *Client) WriteContainerCreated(numContainersCreated int) {
 	go mon.writePoint(
 		measurementContainerPool,
@@ -153,6 +154,7 @@ func (mon *Client) WriteContainerCreated(numContainersCreated int) {
 		map[string]interface{}{fieldContainersCreated: numContainersCreated})
 }
 
+// WriteContainerDestroyed writes the number of connections destroyed to the monitor
 func (mon *Client) WriteContainerDestroyed(numContainersDestroyed int) {
 	go mon.writePoint(
 		measurementContainerPool,
