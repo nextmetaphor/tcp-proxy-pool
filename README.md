@@ -6,35 +6,10 @@ golang-based application to create a TCP proxy server from a pool of back-end co
 ## Getting Started
 
 ### Prerequisites
-* Local [golang](https://golang.org/) installation; see [https://nextmetaphor.io/2016/12/09/getting-started-with-golang-on-macos/](https://nextmetaphor.io/2016/12/09/getting-started-with-golang-on-macos/) for details on how to install on macOS
-* Local [dep](https://golang.github.io/dep/) installation
-
+* Local [golang](https://golang.org/) installation
 ### Install
 
 #### Building the Code
-First restore the vendor dependencies:
-```
-$ dep ensure
-```
-
-Alternatively, manually install the vendor dependencies:
-```bash
-dep init
-
-# aws sdk for ecs integration
-dep ensure -add github.com/aws/aws-sdk-go@1.13.49
-
-# logging
-dep ensure -add github.com/sirupsen/logrus@1.0.5
-
-# command line arguments
-dep ensure -add github.com/alecthomas/kingpin@2.2.6
-
-# container management
-dep ensure -add github.com/aws/aws-sdk-go-v2
-```
-
-Then simply build the binary:
 ```bash
 $ go build -i
 ```
