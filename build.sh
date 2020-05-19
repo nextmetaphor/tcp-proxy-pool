@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# start minikube. e.g.
+# minikube start --driver=hyperkit
+
 # if any command returns non-zero, quit
 set -e
 
