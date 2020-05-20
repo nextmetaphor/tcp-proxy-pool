@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# start minikube. e.g.
-# minikube start --driver=hyperkit
-
 # if any command returns non-zero, quit
 set -e
 
@@ -23,9 +20,9 @@ docker build . -t nextmetaphor/tcp-pool-proxy:latest
 set +e
 
 echo "Deleting from k8s..."
-kubectl delete -f _k8s/tcp-pool-proxy/service.yaml --namespace NAMESPACE 2>/dev/null
-kubectl delete -f _k8s/tcp-pool-proxy/deployment.yaml --namespace $NAMESPACE 2>/dev/null
+kubectl delete -f _k8s/tcp-pool-proxy/service.yaml --namespace ${NAMESPACE} 2>/dev/null
+kubectl delete -f _k8s/tcp-pool-proxy/deployment.yaml --namespace ${NAMESPACE} 2>/dev/null
 
 echo "Creating in k8s..."
-kubectl create -f _k8s/tcp-pool-proxy/deployment.yaml --namespace $NAMESPACE
-kubectl create -f _k8s/tcp-pool-proxy/service.yaml --namespace $NAMESPACE
+kubectl create -f _k8s/tcp-pool-proxy/deployment.yaml --namespace ${NAMESPACE}
+kubectl create -f _k8s/tcp-pool-proxy/service.yaml --namespace ${NAMESPACE}
